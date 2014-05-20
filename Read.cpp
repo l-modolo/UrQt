@@ -76,12 +76,12 @@ void Read::close()
 
 // Definition of the non static stuff
 
-Read::Read(gzFile* fin, char* out, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, char* fill_empty_reads, int min_QC_phred, double min_QC_length, bool estimate)
+Read::Read(gzFile* fin, char* out, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length, bool estimate)
 {
 	try
 	{
 		unique_lock<mutex> lk(m_read);
-		constructor(fin, N, phred_score, min_read_size, min_polyN_size, read_number, remove_empty_reads, fill_empty_reads, min_QC_phred, min_QC_length);
+		constructor(fin, N, phred_score, min_read_size, min_polyN_size, read_number, remove_empty_reads, fill_empty_reads, fill_empty_reads_with, min_QC_phred, min_QC_length);
 		if(!m_out_open)
 		{
 			m_out.open(out, ofstream::out);
@@ -99,12 +99,12 @@ Read::Read(gzFile* fin, char* out, char* N, int phred_score, int min_read_size, 
 	}
 }
 
-Read::Read(gzFile* fin, char* out, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, char* fill_empty_reads, int min_QC_phred, double min_QC_length)
+Read::Read(gzFile* fin, char* out, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length)
 {
 	try
 	{
 		unique_lock<mutex> lk(m_read);
-		constructor(fin, N, phred_score, min_read_size, min_polyN_size, read_number, remove_empty_reads, fill_empty_reads, min_QC_phred, min_QC_length);
+		constructor(fin, N, phred_score, min_read_size, min_polyN_size, read_number, remove_empty_reads, fill_empty_reads, fill_empty_reads_with, min_QC_phred, min_QC_length);
 		if(!m_out_open)
 		{
 			m_out.open(out, ofstream::out);
@@ -122,12 +122,12 @@ Read::Read(gzFile* fin, char* out, char* N, int phred_score, int min_read_size, 
 	}
 }
 
-Read::Read(gzFile* fin, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, char* fill_empty_reads, int min_QC_phred, double min_QC_length)
+Read::Read(gzFile* fin, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length)
 {
 	try
 	{
 		unique_lock<mutex> lk(m_read);
-		constructor(fin, N, phred_score, min_read_size, min_polyN_size, read_number, remove_empty_reads, fill_empty_reads, min_QC_phred, min_QC_length);
+		constructor(fin, N, phred_score, min_read_size, min_polyN_size, read_number, remove_empty_reads, fill_empty_reads, fill_empty_reads_with, min_QC_phred, min_QC_length);
 		m_sampled = true;
 		m_estimation = false;
 	}
@@ -138,7 +138,7 @@ Read::Read(gzFile* fin, char* N, int phred_score, int min_read_size, int min_pol
 	}
 }
 
-void Read::constructor(gzFile* fin,char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, char* fill_empty_reads, int min_QC_phred, double min_QC_length)
+void Read::constructor(gzFile* fin,char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length)
 {
 		m_trimmed = false;
 		m_size = 0;
@@ -191,7 +191,8 @@ void Read::constructor(gzFile* fin,char* N, int phred_score, int min_read_size, 
 			m_stop = m_size;
 		m_N = toupper(*N);
 		m_remove_empty_reads = remove_empty_reads;
-		m_fill_empty_reads = *fill_empty_reads;
+		m_fill_empty_reads = fill_empty_reads;
+		m_fill_empty_reads_with = *fill_empty_reads_with;
 		m_init = true;
 
 		if (min_QC_length > 0.0)
@@ -598,18 +599,30 @@ void Read::writeRead()
 			{
 				if(!m_remove_empty_reads)
 				{
-					if (m_name.at(0) == '@')
-						m_out << m_name << endl;
-					else
-						m_out << "@" << m_name << endl;
-					for (int i= 0; i < m_cut; i++)
-						m_out << m_fill_empty_reads;
-					m_out << endl << "+" << endl;
-					for (int i= 0; i < m_cut; i++)
-						m_out << m_phred[i];
-					m_out << endl;
-					if(m_cut < m_size)
+					if(m_fill_empty_reads)
+					{
+						if (m_name.at(0) == '@')
+							m_out << m_name << endl;
+						else
+							m_out << "@" << m_name << endl;
+						for (int i= 0; i < m_cut; i++)
+							m_out << m_fill_empty_reads_with;
+						m_out << endl << "+" << endl;
+						for (int i= 0; i < m_cut; i++)
+							m_out << m_phred[i];
+						m_out << endl;
 						m_trimmed_reads++;
+					}
+					else
+					{
+						if (m_name.at(0) == '@')
+							m_out << m_name << endl;
+						else
+							m_out << "@" << m_name << endl;
+						m_out << endl << "+" << endl;
+						m_out << endl;
+						m_trimmed_reads++;
+					}
 				}
 				m_empty_reads++;
 			}

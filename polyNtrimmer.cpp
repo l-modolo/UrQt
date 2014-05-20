@@ -51,7 +51,8 @@ int main(int argc, char **argv)
 	int sampling = 0;
 	bool estimation = false;
 	bool remove_empty_reads = true;
-	char fill_empty_reads = '-';
+	bool fill_empty_reads = false;
+	char fill_empty_reads_with = '-';
 	double min_QC_length = -1.0;
 	double min_QC_phred = -1.0;
 	bool v = true;
@@ -68,13 +69,14 @@ int main(int argc, char **argv)
 		{"v", no_argument, 0, 'h'},
 		{"s", required_argument, 0, 'i'},
 		{"S", no_argument, 0, 'j'},
-		{"r", required_argument, 0, 'k'},
+		{"r", required_argument, 0, 'n'},
+		{"R", required_argument, 0, 'k'},
 		{"min_QC_length", required_argument, 0, 'l'},
 		{"min_QC_phred", required_argument, 0, 'm'},
 		{NULL, 0, 0, 0}
 	};
 	
-	while ((c = getopt_long_only(argc, argv, "a:b:c:d:e:f:g:i:j:k", long_options, &option_index)) != -1) {
+	while ((c = getopt_long_only(argc, argv, "a:b:c:d:e:f:g:i:j:k:l:m:n", long_options, &option_index)) != -1) {
 		switch(c)
 		{
 			case 'a': in = optarg;
@@ -103,6 +105,8 @@ int main(int argc, char **argv)
 			break;
 			case 'm': min_QC_phred = atof(optarg);
 			break;
+			case 'n': remove_empty_reads = false;
+			break;
 			default : cout <<  "without argument : " << optopt << endl;
 		}
 	}
@@ -130,7 +134,8 @@ int main(int argc, char **argv)
 		cout <<  "       --min_polyN_size <number> (default: 0)" << endl;
 		cout <<  "       --s <number>  number of reads to sample to compute the proportion of the 4 different nucleotides (default: G:0.25, C:0.25, A:0.25, T:0.25)" << endl;
 		cout <<  "       --S if present the proportion of the 4 different nucleotides is computed in the partitioning of each reads" << endl;
-		cout <<  "       --r <character> if present fill the empty reads (100% polyN) with this letter (default: the empty reads are removed form the output)" << endl;
+		cout <<  "       --r no removing of empty reads (100% polyN) (default: the empty reads are removed from the output)" << endl;
+		cout <<  "       --R <character> if present fill the empty reads (100% polyN) with this letter (default: the empty reads are removed from the output)" << endl;
 		cout <<  "       --min_QC_length <double> if present with --min_QC_phred the minimum percentage of base with min_QC_phred necessary to keep a read" << endl;
 		cout <<  "       --min_QC_phred <int> if present with --min_QC_length, the minimum phred score on min_QC_length percent of the base necessary to keep a read" << endl;
 		cout <<  "       --s no verbose" << endl;
@@ -171,11 +176,16 @@ int main(int argc, char **argv)
 			if(remove_empty_reads)
 				cout << "removing empty reads: true" << endl;
 			else
-				cout << "filling empty reads with:" << fill_empty_reads << endl;
-			if(min_QC_length > 0.0 && min_QC_phred > 0)
-			{
-				cout << "removing reads with a phred score of less than " << min_QC_phred << " on " << min_QC_length << "% of their sequences"<< endl;
-			}
+				if(fill_empty_reads)
+				{
+						cout << "filling empty reads with:" << fill_empty_reads_with << endl;
+					if(min_QC_length > 0.0 && min_QC_phred > 0)
+					{
+						cout << "removing reads with a phred score of less than " << min_QC_phred << " on " << min_QC_length << "% of their sequences"<< endl;
+					}
+				}
+				else
+					cout << "removing empty reads: false" << endl;
 		}
 	}
 	
@@ -222,7 +232,7 @@ int main(int argc, char **argv)
 		{
 			if ((i+1)%1000 == 0)
 				p.update(i);
-			readTrim.add(new Read(&fin, out, &N, phred_score, min_read_size, min_polyN_size, i, remove_empty_reads, &fill_empty_reads, min_QC_phred, min_QC_length, true));
+			readTrim.add(new Read(&fin, out, &N, phred_score, min_read_size, min_polyN_size, i, remove_empty_reads, fill_empty_reads, &fill_empty_reads_with, min_QC_phred, min_QC_length, true));
 		}
 		cout << "trimming:  100%" << endl;
 		readTrim.stop();
@@ -269,7 +279,7 @@ int main(int argc, char **argv)
 						p.update(i);
 		    		if(*it == i)
 		    		{
-		    			readSample.add(new Read(&fin, &N, phred_score, min_read_size, min_polyN_size, i, remove_empty_reads, &fill_empty_reads, min_QC_phred, min_QC_length));
+		    			readSample.add(new Read(&fin, &N, phred_score, min_read_size, min_polyN_size, i, remove_empty_reads, fill_empty_reads, &fill_empty_reads_with, min_QC_phred, min_QC_length));
 		    			it++;
 		    		}
 		    		i++;
@@ -294,7 +304,7 @@ int main(int argc, char **argv)
 		{
 			if ((i+1)%1000 == 0)
 				p.update(i);
-			readTrim.add(new Read(&fin, out, &N, phred_score, min_read_size, min_polyN_size, i, remove_empty_reads, &fill_empty_reads, min_QC_phred, min_QC_length));
+			readTrim.add(new Read(&fin, out, &N, phred_score, min_read_size, min_polyN_size, i, remove_empty_reads, fill_empty_reads, &fill_empty_reads_with, min_QC_phred, min_QC_length));
 		}
 		cout << "trimming:  100%" << endl;
 		readTrim.stop();

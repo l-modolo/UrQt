@@ -34,10 +34,10 @@ using namespace std;
 class Read
 {
 	public:
-	Read(gzFile* fin, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, char* fill_empty_reads, int min_QC_phred, double min_QC_length);
-	Read(gzFile* fin, char* out, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, char* fill_empty_reads, int min_QC_phred, double min_QC_length);
-	Read(gzFile* fin, char* out, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, char* fill_empty_reads, int min_QC_phred, double min_QC_length, bool estimation);
-	void constructor(gzFile* fin,char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, char* fill_empty_reads, int min_QC_phred, double min_QC_length);
+	Read(gzFile* fin, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length);
+	Read(gzFile* fin, char* out, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length);
+	Read(gzFile* fin, char* out, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length, bool estimation);
+	void constructor(gzFile* fin,char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length);
 	~Read();
 	Read& operator=(Read const& readbis);
 	void operator()();
@@ -68,6 +68,7 @@ class Read
 	bool m_sampled;
 	bool m_trimmed;
 	bool m_remove_empty_reads;
+	bool m_fill_empty_reads;
 	bool m_QC_check;
 	int m_size;
 	int m_cut;
@@ -83,7 +84,7 @@ class Read
 	double m_log_polyN;
 	double m_min_QC_length;
 	char m_N;
-	char m_fill_empty_reads;
+	char m_fill_empty_reads_with;
 	
 
 	static double m_G_number;
