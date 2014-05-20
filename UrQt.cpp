@@ -150,10 +150,9 @@ int main(int argc, char **argv)
 	}
 	if (thread_number < 0)
 		thread_number = 1;
-	
 	// the only required argument is the blast file
 	if(in == nullptr || out == nullptr || help){
-		cout <<  "UrQt.1.0.13" << endl;
+		cout <<  "UrQt.1.0.14" << endl;
 		cout <<  "Argument must be defined." << endl;
 		cout <<  "Usage: " << argv[0] <<"--in <input.fastq> --out <output.fastq>" << endl;
 		cout <<  "       --in input fastq file" << endl;
@@ -286,7 +285,31 @@ int main(int argc, char **argv)
 				cout << "disable" << endl;
 		}
 	}
-	
+	try
+	{
+		if(strcmp(in, out) == 0)
+				throw logic_error("in and out are the same file");
+		if(paired > 0)
+		{
+			if(strcmp(in, inpair) == 0)
+				throw logic_error("The two imput files are the same");
+			if(strcmp(out, outpair) == 0)
+				throw logic_error("The two output files are the same");
+			if(strcmp(inpair, outpair) == 0)
+				throw logic_error("inpair and outpair are the same file");
+			if(strcmp(in, outpair) == 0)
+				throw logic_error("in and outpair are the same file");
+			if(strcmp(inpair, out) == 0)
+				throw logic_error("inpair and out are the same file");
+			if(strcmp(inpair, outpair) == 0)
+				throw logic_error("in and out are the same file");
+		}
+	}
+	catch(exception const& e)
+	{
+		cerr << "ERROR : " << e.what() << endl;
+		exit(-1);
+	}
 	char *in_tmp = nullptr;
 	char *out_tmp = nullptr;
 	int number_of_lines = 0;
