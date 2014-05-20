@@ -61,10 +61,8 @@ int main(int argc, char **argv)
 	int sampling = 0;
 	bool estimation = true;
 	bool remove_empty_reads = true;
-	bool fill_empty_reads = false;
 	int paired = 0;
 	int strand_bit = 0;
-	char fill_empty_reads_with = '-';
 	double min_QC_length = -1.0;
 	double min_QC_phred = -1.0;
 	bool v = false;
@@ -120,7 +118,7 @@ int main(int argc, char **argv)
 			break;
 			case 'j': estimation = false;
 			break;
-			case 'k': remove_empty_reads = false; fill_empty_reads = *optarg;
+			case 'k': remove_empty_reads = false;
 			break;
 			case 'l': min_QC_length = atof(optarg);
 			break;
@@ -162,7 +160,6 @@ int main(int argc, char **argv)
 		cout <<  "       --s <number> number of reads to sample to compute the fixe proportion of the 4 different nucleotides instead of being computed in the partitioning of each reads" << endl;
 		cout <<  "       --S if present the proportion of the 4 different nucleotides is set to 1/4 instead of being computed in the partitioning of each reads" << endl;
 		cout <<  "       --r no removing of empty reads (100% polyN) (default: the empty reads are removed from the output)" << endl;
-		cout <<  "       --R <character> if present fill the empty reads (100% polyN) with this letter (default: the empty reads are removed from the output)" << endl;
 		cout <<  "       --min_QC_length <double> if present with --min_QC_phred the minimum percentage of base with min_QC_phred necessary to keep a read" << endl;
 		cout <<  "       --min_QC_phred <int> if present with --min_QC_length, the minimum phred score on min_QC_length percent of the base necessary to keep a read" << endl;
 		cout <<  "       --v verbose" << endl;
@@ -235,18 +232,13 @@ int main(int argc, char **argv)
 			if(remove_empty_reads)
 				cout << "removing empty reads:    true" << endl;
 			else
-				if(fill_empty_reads)
-				{
-					cout << "filling empty reads with:" << fill_empty_reads_with << endl;
-					if(min_QC_length > 0.0 && min_QC_phred > 0)
-					{
-						cout << "removing reads with :" << endl;
-						cout << " -phred score          >=" << min_QC_phred << endl;
-						cout << " -on:                    " << min_QC_length << "% of their sequences"<< endl;
-					}
-				}
-				else
-					cout << "removing empty reads:    false" << endl;
+				cout << "removing empty reads:    false" << endl;
+			if(min_QC_length > 0.0 && min_QC_phred > 0)
+			{
+				cout << "removing reads with :" << endl;
+				cout << " -phred score          >=" << min_QC_phred << endl;
+				cout << " -on:                    " << min_QC_length << "% of their sequences"<< endl;
+			}
 			if(gziped)
 				cout << "compressed output" << endl;
 		}
@@ -332,7 +324,7 @@ int main(int argc, char **argv)
 			{
 				if (v && (i+1)%1000 == 0)
 					p.update(i);
-				readTrim.add(new Read(fin, out_tmp, gziped, &N, phred_score, min_read_size, min_polyN_size, i, remove_empty_reads, fill_empty_reads, &fill_empty_reads_with, min_QC_phred, min_QC_length, true, paired, strand_bit));
+				readTrim.add(new Read(fin, out_tmp, gziped, &N, phred_score, min_read_size, min_polyN_size, i, remove_empty_reads, min_QC_phred, min_QC_length, true, paired, strand_bit));
 			}
 			if(v) p.update(number_of_lines);
 			readTrim.stop();
@@ -372,7 +364,7 @@ int main(int argc, char **argv)
 					{
 						if(*it == i)
 						{
-							readSample.add(new Read(fin, &N, phred_score, min_read_size, min_polyN_size, i, remove_empty_reads, fill_empty_reads, &fill_empty_reads_with, min_QC_phred, min_QC_length, strand_bit));
+							readSample.add(new Read(fin, &N, phred_score, min_read_size, min_polyN_size, i, remove_empty_reads, min_QC_phred, min_QC_length, strand_bit));
 							it++;
 						}
 						i++;
@@ -395,7 +387,7 @@ int main(int argc, char **argv)
 			{
 				if (v && (i+1)%1000 == 0)
 					p.update(i);
-				readTrim.add(new Read(fin, out_tmp, gziped,  &N, phred_score, min_read_size, min_polyN_size, i, remove_empty_reads, fill_empty_reads, &fill_empty_reads_with, min_QC_phred, min_QC_length, paired, strand_bit));
+				readTrim.add(new Read(fin, out_tmp, gziped,  &N, phred_score, min_read_size, min_polyN_size, i, remove_empty_reads, min_QC_phred, min_QC_length, paired, strand_bit));
 			}
 			if(v) p.update(number_of_lines);
 			readTrim.stop();

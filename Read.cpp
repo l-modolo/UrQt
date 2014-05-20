@@ -348,12 +348,12 @@ void Read::remove_empty_reads_paired(char* out, char* outpair)
 // Definition of the non static stuff
 
 // estimation of base probability for each read
-Read::Read(igzstream &fin, char* out, bool gziped, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length, bool estimate, int paired, int strand_bit)
+Read::Read(igzstream &fin, char* out, bool gziped, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, bool estimate, int paired, int strand_bit)
 {
 	try
 	{
 		unique_lock<mutex> lk(m_read);
-		constructor(fin, N, phred_score, min_read_size, min_polyN_size, read_number, remove_empty_reads, fill_empty_reads, fill_empty_reads_with, min_QC_phred, min_QC_length, strand_bit);
+		constructor(fin, N, phred_score, min_read_size, min_polyN_size, read_number, remove_empty_reads, min_QC_phred, min_QC_length, strand_bit);
 		m_estimation = true;
 		m_sampled = false;
 		m_paired = paired;
@@ -368,12 +368,12 @@ Read::Read(igzstream &fin, char* out, bool gziped, char* N, int phred_score, int
 }
 
 // static base probability
-Read::Read(igzstream &fin, char* out, bool gziped, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length, int paired, int strand_bit)
+Read::Read(igzstream &fin, char* out, bool gziped, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, int paired, int strand_bit)
 {
 	try
 	{
 		unique_lock<mutex> lk(m_read);
-		constructor(fin, N, phred_score, min_read_size, min_polyN_size, read_number, remove_empty_reads, fill_empty_reads, fill_empty_reads_with, min_QC_phred, min_QC_length, strand_bit);
+		constructor(fin, N, phred_score, min_read_size, min_polyN_size, read_number, remove_empty_reads, min_QC_phred, min_QC_length, strand_bit);
 		m_sampled = false;
 		m_estimation = false;
 		m_paired = paired;
@@ -388,12 +388,12 @@ Read::Read(igzstream &fin, char* out, bool gziped, char* N, int phred_score, int
 }
 
 // sampling of base probability
-Read::Read(igzstream &fin, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length, int strand_bit)
+Read::Read(igzstream &fin, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, int strand_bit)
 {
 	try
 	{
 		unique_lock<mutex> lk(m_read);
-		constructor(fin, N, phred_score, min_read_size, min_polyN_size, read_number, remove_empty_reads, fill_empty_reads, fill_empty_reads_with, min_QC_phred, min_QC_length, strand_bit);
+		constructor(fin, N, phred_score, min_read_size, min_polyN_size, read_number, remove_empty_reads, min_QC_phred, min_QC_length, strand_bit);
 		m_sampled = true;
 		m_estimation = false;
 		m_paired = 0;
@@ -405,7 +405,7 @@ Read::Read(igzstream &fin, char* N, int phred_score, int min_read_size, int min_
 	}
 }
 
-void Read::constructor(igzstream &fin,char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length, int strand_bit)
+void Read::constructor(igzstream &fin,char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, int strand_bit)
 {
 		m_trimmed = false;
 		m_size = 0;
@@ -459,8 +459,6 @@ void Read::constructor(igzstream &fin,char* N, int phred_score, int min_read_siz
 			m_stop = m_size;
 		m_N = toupper(*N);
 		m_remove_empty_reads = remove_empty_reads;
-		m_fill_empty_reads = fill_empty_reads;
-		m_fill_empty_reads_with = *fill_empty_reads_with;
 		m_strand = strand_bit;
 		m_init = true;
 
@@ -1048,102 +1046,33 @@ void Read::writeRead()
 			if( m_cut_end > m_start +1 && m_cut_end != m_cut_begin)
 			{
 				if(m_gziped)
-				{
-					if (m_name.at(0) == '@')
-						m_out_gz << m_name << endl;
-					else
-						m_out_gz << "@" << m_name << endl;
-					for (int i = m_cut_begin; i < m_cut_end; i++)
-						m_out_gz << m_seq.at(i);
-					m_out_gz << endl << "+" << endl;
-					for (int i = m_cut_begin; i < m_cut_end; i++)
-						m_out_gz << m_phred[i];
-					m_out_gz << endl;
-				}
+					writeRead(m_out_gz);
 				else
-				{
-					if (m_name.at(0) == '@')
-						m_out << m_name << endl;
-					else
-						m_out << "@" << m_name << endl;
-					for (int i = m_cut_begin; i < m_cut_end; i++)
-						m_out << m_seq.at(i);
-					m_out << endl << "+" << endl;
-					for (int i = m_cut_begin; i < m_cut_end; i++)
-						m_out << m_phred[i];
-					m_out << endl;
-				}
+					writeRead(m_out);
 				if(m_cut_end < m_size || m_cut_begin > 0)
 					m_trimmed_reads++;
 			}
 			else
 			{
-				if(!m_remove_empty_reads || m_paired > 0)
+				if(m_paired > 0)
 				{
-					if(m_fill_empty_reads && m_paired == 0)
-					{
-						if(m_gziped)
-						{
-							if (m_name.at(0) == '@')
-								m_out_gz << m_name << endl;
-							else
-								m_out_gz << "@" << m_name << endl;
-							for (int i = m_cut_begin; i < m_cut_end; i++)
-								m_out_gz << m_fill_empty_reads_with;
-							m_out_gz << endl << "+" << endl;
-							for (int i = m_cut_begin; i < m_cut_end; i++)
-								m_out_gz << m_phred[i];
-							m_out_gz << endl;
-						}
-						else
-						{
-							if (m_name.at(0) == '@')
-								m_out << m_name << endl;
-							else
-								m_out << "@" << m_name << endl;
-							for (int i = m_cut_begin; i < m_cut_end; i++)
-								m_out << m_fill_empty_reads_with;
-							m_out << endl << "+" << endl;
-							for (int i = m_cut_begin; i < m_cut_end; i++)
-								m_out << m_phred[i];
-							m_out << endl;
-						}
-						m_trimmed_reads++;
-					}
+					if(m_gziped)
+						writeRead(m_out_gz);
 					else
-					{
-						if(m_name.size() > 0)
-						{
-							if(m_gziped)
-							{
-								if (m_name.at(0) == '@')
-									m_out_gz << m_name << endl;
-								else
-									m_out_gz << "@" << m_name << endl;
-								m_out_gz << endl << "+" << endl;
-								m_out_gz << endl;
-								m_trimmed_reads++;
-								if (m_paired == 1)
-									m_paired_pos_1.push(m_read_number + 1);
-								if (m_paired == 2)
-									m_paired_pos_2.push(m_read_number + 1);
-							}
-							else
-							{
-								if (m_name.at(0) == '@')
-									m_out << m_name << endl;
-								else
-									m_out << "@" << m_name << endl;
-								m_out << endl << "+" << endl;
-								m_out << endl;
-								m_trimmed_reads++;
-								if (m_paired == 1)
-									m_paired_pos_1.push(m_read_number + 1);
-								if (m_paired == 2)
-									m_paired_pos_2.push(m_read_number + 1);
-							}
-						}
-					}
+						writeRead(m_out);
+					if (m_paired == 1)
+						m_paired_pos_1.push(m_read_number + 1);
+					if (m_paired == 2)
+						m_paired_pos_2.push(m_read_number + 1);
+					m_trimmed_reads++;
+				}
+				if(!m_remove_empty_reads)
+				{
+					if(m_gziped)
+						writeRead(m_out_gz);
+					else
+						writeRead(m_out);
+					m_trimmed_reads++;
 				}
 				m_empty_reads++;
 			}
@@ -1158,68 +1087,24 @@ void Read::writeRead()
 	}
 }
 
-void Read::writeRead(ostream &stream, int* base_trimmed)
+void Read::writeRead(ostream &stream)
 {
 	try
 	{
-		if(m_trimmed)
-		{
-			if( m_cut_end == 0 && m_cut_begin > 0)
-				m_cut_end = m_size;
-			// we write the trimmed read if it's not just poly N
-			if( m_cut_end > 0)
-			{
-				stream << "@" << m_name << endl;
-				for (int i = m_cut_begin; i < m_cut_end; i++)
-					stream << m_seq.at(i);
-				stream << endl << "+" << endl;
-				for (int i = m_cut_begin; i < m_cut_end; i++)
-					stream << m_phred[i];
-				stream << endl;
-				if(m_cut_end < m_size)
-					m_trimmed_reads++;
-			}
-			*base_trimmed += (m_size - m_cut_end) + m_cut_begin;
-		}
+		if (m_name.at(0) == '@')
+			stream << m_name << endl;
+		else
+			stream << "@" << m_name << endl;
+		for (int i = m_cut_begin; i < m_cut_end; i++)
+			stream << m_seq.at(i);
+		stream << endl << "+" << endl;
+		for (int i = m_cut_begin; i < m_cut_end; i++)
+			stream << m_phred[i];
+		stream << endl;
 	}
 	catch(exception const& e)
 	{
 		cerr << "ERROR : " << e.what() << " in : void Read::writeRead(ostream &stream, int* base_trimmed)" << endl;
-		exit(-1);
-	}
-}
-
-string Read::writeRead(int* base_trimmed)
-{
-	try
-	{
-		string output;
-		if(m_trimmed)
-		{
-			if( m_cut_end == 0 && m_cut_begin > 0)
-				m_cut_end = m_size;
-			// we write the trimmed read if it's not just poly N
-			if( m_cut_end > 0)
-			{
-				output.append("@");
-				output.append(m_name);
-				output.append("\n");
-				for (int i = m_cut_begin; i < m_cut_end; i++)
-					output.push_back(m_seq.at(i));
-				output.append("\n+\n");
-				for (int i = m_cut_begin; i < m_cut_end; i++)
-					output.push_back(m_phred[i]);
-				output.append("\n");
-				if(m_cut_end < m_size)
-					m_trimmed_reads++;
-			}
-			*base_trimmed += (m_size - m_cut_end) + m_cut_begin;
-		}
-		return output;
-	}
-	catch(exception const& e)
-	{
-		cerr << "ERROR : " << e.what() << " in : string Read::writeRead(int* base_trimmed)" << endl;
 		exit(-1);
 	}
 }

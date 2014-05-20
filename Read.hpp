@@ -45,10 +45,10 @@ using namespace std;
 class Read
 {
 	public:
-	Read(igzstream &fin, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length, int strand_bit);
-	Read(igzstream &fin, char* out, bool gziped, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length, int paired, int strand_bit);
-	Read(igzstream &fin, char* out, bool gziped, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length, bool estimation, int paired, int strand_bit);
-	void constructor(igzstream &fin,char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length, int strand_bit);
+	Read(igzstream &fin, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, int strand_bit);
+	Read(igzstream &fin, char* out, bool gziped, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, int paired, int strand_bit);
+	Read(igzstream &fin, char* out, bool gziped, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, bool estimation, int paired, int strand_bit);
+	void constructor(igzstream &fin,char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, int strand_bit);
 	~Read();
 	Read& operator=(Read const& readbis);
 	void operator()();
@@ -56,8 +56,7 @@ class Read
 	void polyNtrim();
 	void polyNtrimEstimate();
 	
-	void writeRead(ostream &stream, int* base_trimmed);
-	string writeRead(int* base_trimmed);
+	void writeRead(ostream &stream);
 	void writeRead();
 	int writeSize();
 	void run();
@@ -86,7 +85,6 @@ class Read
 	bool m_sampled;
 	bool m_trimmed;
 	bool m_remove_empty_reads;
-	bool m_fill_empty_reads;
 	bool m_QC_check;
 	int m_size;
 	int m_cut_begin;
@@ -104,8 +102,6 @@ class Read
 	double m_log_polyN;
 	double m_min_QC_length;
 	char m_N;
-	char m_fill_empty_reads_with;
-	
 
 	static double m_G_number;
 	static double m_C_number;
