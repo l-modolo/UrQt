@@ -21,7 +21,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <zlib.h>
 #include <cmath>
+#include <stdio.h>
+#include <string.h>
 #include <string>
+#include <queue>
 #include <iostream>
 #include <fstream>
 #include <ostream>
@@ -35,8 +38,8 @@ class Read
 {
 	public:
 	Read(gzFile* fin, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length);
-	Read(gzFile* fin, char* out, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length);
-	Read(gzFile* fin, char* out, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length, bool estimation);
+	Read(gzFile* fin, char* out, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length, int paired);
+	Read(gzFile* fin, char* out, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length, bool estimation, int paired);
 	void constructor(gzFile* fin,char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length);
 	~Read();
 	Read& operator=(Read const& readbis);
@@ -56,14 +59,19 @@ class Read
 	static double C_content();
 	static double A_content();
 	static double T_content();
+	static bool sampling_done();
 
 	static int empty_reads();
 	static int trimmed_reads();
+	static void reset();
 
 	static void close();
-	
+
+	static void remove_empty_reads_paired(char* out, char* outpaired);
+
 	private:
 	bool m_init;
+	int m_paired;
 	bool m_estimation;
 	bool m_sampled;
 	bool m_trimmed;
@@ -96,6 +104,9 @@ class Read
 	static double m_C_probability;
 	static double m_A_probability;
 	static double m_T_probability;
+
+	static queue<int> m_paired_pos_1;
+	static queue<int> m_paired_pos_2;
 
 	static bool m_out_open;
 	static ofstream m_out;

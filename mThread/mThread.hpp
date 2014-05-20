@@ -46,6 +46,7 @@ class mThread
 	protected:
 	void run(mThreadWaiting<T>* todo, mThreadDone<T>* done);
 
+	bool mThread_done_task;
 	mThreadWaiting<T> mThread_waiting;
 	mThreadDone<T> mThread_done;
 	vector< thread > mThread_running;
@@ -54,17 +55,19 @@ class mThread
 // we create a list of number thread ready to run and number*10 thread_waiting to
 // pileup the jobs to do by those threads
 template <typename T>
-mThread<T>::mThread(int number) : mThread_waiting(number*1000), mThread_done()
+mThread<T>::mThread(int number) : mThread_waiting(number*10), mThread_done()
 {
+	mThread_done_task = false;
 	for(int i = 0; i < number; i++)
-		mThread_running.push_back( thread(&mThread<T>::run, this, &mThread_waiting, nullptr) );
+		mThread_running.push_back( thread(&mThread<T>::run, this, &mThread_waiting, &mThread_done) );
 }
 
 // we create a list of number thread ready to run and number*10 thread_waiting to
 // pileup the jobs to do by those threads
 template <typename T>
-mThread<T>::mThread(int number, bool done_action) : mThread_waiting(number*1000), mThread_done(number*1000)
+mThread<T>::mThread(int number, bool done_action) : mThread_waiting(number*1000), mThread_done(number*4000)
 {
+	mThread_done_task = true;
 	for(int i = 0; i < number; i++)
 		mThread_running.push_back( thread(&mThread<T>::run, this, &mThread_waiting, &mThread_done) );
 }
@@ -76,20 +79,26 @@ void mThread<T>::run(mThreadWaiting<T>* todo, mThreadDone<T>* done)
 	{
 		T* mThread_task = nullptr;
 		int mThread_task_number = -1;
+		bool running = true;
 		do
 		{
 			mThread_task = nullptr;
+			mThread_task_number = -1;
 			todo->get(&mThread_task, &mThread_task_number); // Thread_todo->get() is supposed to block until todo is not empty
+
 			if (mThread_task != nullptr) // if todo is empty mThread_task == nullptr
 			{
 				mThread_task->run();
-				if(done != nullptr)
+				if(mThread_done_task)
 					done->add(mThread_task, mThread_task_number); // we add the object mThread_task to the done list to execute the 'mThread_task.done()' and its position in the list
 				else
 					delete mThread_task;
 			}
+			else
+				running = false;
 		}
-		while(mThread_task != nullptr); // if todo is empty x == nullptr
+		while(running);
+		cout << "thread done" << endl;
 	}
 	catch(exception const& e)
 	{
@@ -114,7 +123,7 @@ void mThread<T>::stop()
 	for(int i = 0; i < mThread_running.size(); i++)
 			(mThread_running.at(i)).join();
 	mThread_done.set_stop(true);
-	// mThread_done.join();
+	mThread_done.join();
 }
 
 #endif

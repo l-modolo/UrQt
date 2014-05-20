@@ -23,11 +23,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <thread>
 #include <mutex>
 #include <condition_variable>
-#include <deque>
 #include <exception>
 #include <stdexcept>
 #include <iostream>
 #include <string>
+#include "mThreadCircular.hpp"
+
 
 using namespace std;
 
@@ -40,7 +41,6 @@ class mThreadDone
 	~mThreadDone();
 	
 	void add(T* x, int number);
-	void get(T** x);
 	
 	bool stop();
 	bool stop_all();
@@ -53,74 +53,76 @@ class mThreadDone
 	string output();
 
 	protected:
+	void get(T** x);
 	void push_back(T* x, int number);
 	T* pop_front();
 	
 	int can_add(int number);
 	int can_get();
 	int true_size();
-	int mThread_iteration;
-	int mThread_iteration_done;
+	int mThreadDone_iteration;
+	int mThreadDone_iteration_done;
 	
-	thread mThread_thread;
+	thread mThreadDone_thread;
 	void run();
 	
 	// communication between the thread
-	mutex mThread_onebyone;
-	mutex mThread_empty; // if the list is empty we wait new jobs
-	mutex mThread_full; // if the list is full we wait before new jobs
-	condition_variable mThread_empty_cond;
-	condition_variable mThread_full_cond;
-	
+	mutex mThreadDone_onebyone;
+	mutex mThreadDone_empty; // if the list is empty we wait new jobs
+	mutex mThreadDone_full; // if the list is full we wait before new jobs
+	mutex mThreadDone_initialized;
+	condition_variable mThreadDone_empty_cond;
+	condition_variable mThreadDone_full_cond;
+	condition_variable mThreadDone_initialized_cond;
+
 	// status of the waiting list
-	int mThread_size; // size of the list
-	int mThread_pos_front; // we isrun jobs at the front
-	int mThread_pos_back; // we add new jobs at the back
-	deque<T*> mThread_waiting; // thread waiting
-	deque<int> mThread_waiting_number; // id of thread waiting
-	int mThread_last_done;
+	int mThreadDone_size; // size of the list
+	int mThreadDone_pos_front; // we run jobs at the front
+	int mThreadDone_pos_back; // we add new jobs at the back
+	mThreadCircular<T> mThreadDone_loop;
+	int mThreadDone_last_done;
 	
-	bool mThread_init;
-	bool mThread_isrun;
-	bool mThread_stop_signal;
+	bool mThreadDone_init;
+	bool mThreadDone_isrun;
+	bool mThreadDone_stop_signal;
 };
 
 template <typename T>
 bool mThreadDone<T>::isrun()
 {
-	unique_lock<mutex> lk(mThread_onebyone);
-	return mThread_isrun;
+	unique_lock<mutex> lk(mThreadDone_onebyone);
+	return mThreadDone_isrun;
 }
 
 template <typename T>
 void mThreadDone<T>::set_isrun(bool isrun)
 {
-	unique_lock<mutex> lk(mThread_onebyone);
-	mThread_isrun = isrun;
+	unique_lock<mutex> lk(mThreadDone_onebyone);
+	mThreadDone_isrun = isrun;
 	if(!isrun)
-		mThread_empty_cond.notify_one();
+		mThreadDone_empty_cond.notify_one();
 }
 
 template <typename T>
 bool mThreadDone<T>::stop()
 {
-	unique_lock<mutex> lk(mThread_onebyone);
-	return mThread_stop_signal;
+	unique_lock<mutex> lk(mThreadDone_onebyone);
+	return mThreadDone_stop_signal;
 }
 
 template <typename T>
 bool mThreadDone<T>::stop_all()
 {
-	mThread_full_cond.notify_all();
-	mThread_empty_cond.notify_all();
+	mThreadDone_full_cond.notify_all();
+	mThreadDone_empty_cond.notify_all();
 }
 
 template <typename T>
 void mThreadDone<T>::set_stop(bool isrun)
 {
-	unique_lock<mutex> lk(mThread_onebyone);
-	mThread_stop_signal = isrun;
-	mThread_empty_cond.notify_one();
+	unique_lock<mutex> lk(mThreadDone_onebyone);
+	mThreadDone_stop_signal = isrun;
+	mThreadDone_empty_cond.notify_one();
 }
 
 // initialization of the waiting list
@@ -129,10 +131,9 @@ mThreadDone<T>::mThreadDone()
 {
 	try
 	{
-		unique_lock<mutex> lk(mThread_onebyone);
-		mThread_isrun = false;
-		mThread_stop_signal = true;
-		mThread_init = false;
+		mThreadDone_isrun = false;
+		mThreadDone_stop_signal = true;
+		mThreadDone_init = false;
 	}
 	catch(exception const& e)
 	{
@@ -142,21 +143,22 @@ mThreadDone<T>::mThreadDone()
 
 // initialization of the waiting list
 template<typename T>
-mThreadDone<T>::mThreadDone(int size) : mThread_thread( &mThreadDone<T>::run, this)
+mThreadDone<T>::mThreadDone(int size) : mThreadDone_thread( &mThreadDone<T>::run, this)
 {
 	try
 	{
-		unique_lock<mutex> lk(mThread_onebyone);
-		mThread_isrun = true;
-		mThread_stop_signal = false;
-		mThread_size = size;
-		mThread_pos_front = -1;
-		mThread_pos_back = -1;
-		mThread_waiting.clear();
-		mThread_iteration = 0;
-		mThread_iteration_done = 0;
-		mThread_last_done = -1;
-		mThread_init = true;
+		unique_lock<mutex> lk(mThreadDone_onebyone);
+		mThreadDone_isrun = true;
+		mThreadDone_stop_signal = false;
+		mThreadDone_size = size;
+		mThreadDone_pos_front = -1;
+		mThreadDone_pos_back = -1;
+		mThreadDone_loop.init(size);
+		mThreadDone_iteration = 0;
+		mThreadDone_iteration_done = 0;
+		mThreadDone_last_done = -1;
+		mThreadDone_init = true;
+		mThreadDone_initialized_cond.notify_all();
 	}
 	catch(exception const& e)
 	{
@@ -169,15 +171,14 @@ mThreadDone<T>::~mThreadDone()
 {
 	try
 	{
-		unique_lock<mutex> full(mThread_full);
-		if(mThread_init)
+		unique_lock<mutex> full(mThreadDone_full);
+		if(mThreadDone_init)
 		{
-				while(true_size() >= 1)
-					mThread_empty_cond.wait(full);
-				// cout << "done finish" << endl;
-				join();
+			while(true_size() >= 1)
+				mThreadDone_empty_cond.wait(full);
+			join();
 		}
-		mThread_init = false;
+		mThreadDone_init = false;
 	}
 	catch(exception const& e)
 	{
@@ -190,21 +191,26 @@ void mThreadDone<T>::run()
 {
 	try
 	{
-		T* mThread_task = nullptr;
-		int mThread_task_number = -1;
+		unique_lock<mutex> initialized(mThreadDone_initialized);
+		while(!mThreadDone_init)
+				mThreadDone_initialized_cond.wait(initialized);
+
+		T* mThreadDone_task = nullptr;
+		bool running = true;
 		do
 		{
-			
-			mThread_task = nullptr;
-			get(&mThread_task); // Thread_todo->get() is supposed to block until todo is not empty
-			if (mThread_task != nullptr) // if todo is empty mThread_task == nullptr
+			mThreadDone_task = nullptr;
+			get(&mThreadDone_task); // Thread_todo->get() is supposed to block until todo is not empty
+			if (mThreadDone_task != nullptr) // if todo is empty mThreadDone_task == nullptr
 			{
-				mThread_task->done();
-				delete mThread_task;
+				mThreadDone_task->done();
+				delete mThreadDone_task;
 			}
+			else
+				running = false;
 		}
-		while(mThread_task != nullptr); // if todo is empty x == nullptr
-		// cout << "writing done" << endl;
+		while(running);
+		cout << "writing done" << endl;
 	}
 	catch(exception const& e)
 	{
@@ -218,13 +224,12 @@ void mThreadDone<T>::add(T* x, int n)
 {
 	try
 	{
-		if(mThread_init)
+		if(mThreadDone_init)
 		{
-			int number = n;
-			unique_lock<mutex> full(mThread_full);
-			while(!can_add(number))
-				mThread_full_cond.wait(full); // if the list is full we wait
-			push_back(x, number); // when there is room we add the job
+			unique_lock<mutex> full(mThreadDone_full);
+			while(!can_add(n))
+				mThreadDone_full_cond.wait(full); // if the list is full we wait
+			push_back(x, n); // when there is room we add the job
 		}
 		else
 			throw logic_error("Done list not initialized");
@@ -242,11 +247,11 @@ void mThreadDone<T>::get(T** x)
 {
 	try
 	{
-		if(mThread_init)
+		if(mThreadDone_init)
 		{
-			unique_lock<mutex> empty(mThread_empty);
-			while(!can_get() && !mThread_stop_signal)
-				mThread_empty_cond.wait(empty); // if the list in empty we wait
+			unique_lock<mutex> empty(mThreadDone_empty);
+			while(!can_get() && !mThreadDone_stop_signal)
+				mThreadDone_empty_cond.wait(empty); // if the list in empty we wait
 			*x = pop_front(); // when there is a job we get it
 		}
 		else
@@ -263,26 +268,9 @@ void mThreadDone<T>::get(T** x)
 template<typename T>
 void mThreadDone<T>::push_back(T* x, int number)
 {
-	unique_lock<mutex> lk(mThread_onebyone); // we add one job at the time
-	if(mThread_waiting_number.size() == 0 || number > mThread_waiting_number.back()) // if the job is the last to be executed we add it at the back
-	{
-		mThread_waiting.push_back(x); // add job at the back of the list
-		mThread_waiting_number.push_back(number);
-	}
-	else // else we add it at the right position in the list
-	{
-		typename deque< T* >::iterator it = mThread_waiting.begin();
-		deque< int >::iterator it_number = mThread_waiting_number.begin();
-		while (it_number != mThread_waiting_number.end() and *it_number < number)
-		{
-			it++;
-			it_number++;
-		}
-		mThread_waiting.insert(it,x); // add job just before the next job
-		mThread_waiting_number.insert(it_number,number);
-
-	}
-	mThread_empty_cond.notify_one(); // we signal one thread waiting for a job that the list is not empty anymore (in the get() function)
+	unique_lock<mutex> lk(mThreadDone_onebyone); // we add one job at the time
+	mThreadDone_loop.add(x, number);
+	mThreadDone_empty_cond.notify_one(); // we signal one thread waiting for a job that the list is not empty anymore (in the get() function)
 }
 
 // getting a job from the list
@@ -291,27 +279,17 @@ T* mThreadDone<T>::pop_front()
 {
 	try
 	{
-		unique_lock<mutex> lk(mThread_onebyone); // we get one job at the time
+		unique_lock<mutex> lk(mThreadDone_onebyone); // we get one job at the time
 		T* value = nullptr;
+		value = mThreadDone_loop.pop();
 
-		if(mThread_waiting.size() <= 0)
-			value = nullptr; //if the list is empty we get nothing
-		else
+		if(mThreadDone_stop_signal) // if we get the stop signal there will be no new job added so their is no reason for the thread to wait for the list to fill up
 		{
-			value = mThread_waiting.at(0);
-			mThread_waiting.at(0) = nullptr; // create a new object from the one at the front T need to have a initiator / copy
-			mThread_waiting.pop_front(); // remove the element at the front and delete it
-			mThread_last_done = mThread_waiting_number.at(0); // we record the number of the last job done
-			mThread_waiting_number.pop_front();
-		}
-
-		if(mThread_stop_signal) // if we get the stop signal there will be no new job added so their is no reason for the thread to wait for the list to fill up
-		{
-			mThread_isrun = false;
-			mThread_empty_cond.notify_all();
+			mThreadDone_isrun = false;
+			mThreadDone_empty_cond.notify_all();
 		}
 		else // else we allow only one thread to continue
-			mThread_full_cond.notify_one();
+			mThreadDone_full_cond.notify_one();
 
 		return value;
 	}
@@ -325,20 +303,10 @@ T* mThreadDone<T>::pop_front()
 template<typename T>
 int mThreadDone<T>::can_add(int number)
 {
-	unique_lock<mutex> lk(mThread_onebyone);
-	if(mThread_isrun) // if we didn't get the stop signal we proceed
+	unique_lock<mutex> lk(mThreadDone_onebyone);
+	if(mThreadDone_isrun) // if we didn't get the stop signal we proceed
 	{
-		if(mThread_waiting.size() < mThread_size) // if the list is not full
-			return true;
-		else // if the list is full we check if the number jobs number is after the max job number of the list
-		{
-			if(mThread_waiting_number.back() == -1)
-				return true;
-			if(number < mThread_waiting_number.back())
-				return true;
-			else
-				return false;
-		}
+		return mThreadDone_loop.can_add(number);
 	}
 	else // if we got the stop signal we can finish every thing even if the list is full
 		return true;
@@ -349,26 +317,12 @@ int mThreadDone<T>::can_get()
 {
 	try
 	{
-		unique_lock<mutex> lk(mThread_onebyone);
-		if(mThread_waiting.size() > 0) // if the list is not empty
-		{
-			if(mThread_last_done == -1 && mThread_waiting_number.front() == 0) // if it's the first job we run it
-				return true;
-			else // if we already run the first job
-			{
-				if(mThread_last_done == mThread_waiting_number.front() - 1) // if it's the next jobs we run it
-					return true;
-				else // else we continue to wait for the next job
-					return false;
-			}
-		}
-		else // if the list is empty we wait
-		{
-			if(mThread_isrun) // if we didn't get the stop signal we proceed
-				return false;
-			else
-				return true;
-		}
+		// cout << "Done | ";
+		// mThreadDone_loop.print();
+		unique_lock<mutex> lk(mThreadDone_onebyone);
+		if(!mThreadDone_isrun)
+			return false;
+		return mThreadDone_loop.can_get();
 	}
 	catch(exception const& e)
 	{
@@ -380,22 +334,22 @@ int mThreadDone<T>::can_get()
 template<typename T>
 int mThreadDone<T>::true_size()
 {
-	unique_lock<mutex> lk(mThread_onebyone);
-	return mThread_waiting.size();
+	unique_lock<mutex> lk(mThreadDone_onebyone);
+	return mThreadDone_loop.size();
 }
 
 template <typename T>
 void mThreadDone<T>::join()
 {
-	if(mThread_init)
-		if(mThread_thread.joinable())
-			mThread_thread.join();
+	if(mThreadDone_init)
+		if(mThreadDone_thread.joinable())
+			mThreadDone_thread.join();
 }
 
 template<typename T>
 string mThreadDone<T>::output()
 {
-	return "D : "+to_string(mThread_waiting.size());
+	return "D : "+to_string(mThreadDone_loop.size());
 }
 
 #endif

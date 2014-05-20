@@ -29,6 +29,9 @@ double Read::m_C_probability = 0.25;
 double Read::m_A_probability = 0.25;
 double Read::m_T_probability = 0.25;
 
+queue<int> Read::m_paired_pos_1;
+queue<int> Read::m_paired_pos_2;
+
 mutex Read::m_read;
 bool Read::m_out_open = false;
 ofstream Read::m_out;
@@ -36,6 +39,13 @@ bool Read::m_phred_score_set = false;
 int Read::m_phred_score = 33.0;
 int Read::m_empty_reads = 0;
 int Read::m_trimmed_reads = 0;
+
+bool Read::sampling_done()
+{
+	if(m_G_number != 0.0 && m_C_number != 0.0 && m_A_number != 0.0 && m_T_number != 0.0)
+		return true;
+	return false;
+}
 
 double Read::G_content()
 {
@@ -68,15 +78,123 @@ int Read::trimmed_reads()
 	return m_trimmed_reads;
 }
 
+void Read::reset()
+{
+	m_empty_reads = 0;
+	m_trimmed_reads = 0;
+	if(m_out_open)
+		m_out.close();
+	m_out_open = false;
+	m_G_number = 0.0;
+	m_C_number = 0.0;
+	m_A_number = 0.0;
+	m_T_number = 0.0;
+
+	m_G_probability = 0.25;
+	m_C_probability = 0.25;
+	m_A_probability = 0.25;
+	m_T_probability = 0.25;
+}
+
 void Read::close()
 {
 	if(m_out_open)
 		m_out.close();
 }
 
+void Read::remove_empty_reads_paired(char* out, char* outpair)
+{
+	// we only keep the position present in the two list of removed reads
+	queue<int> m_paired_pos;
+	while(!m_paired_pos_1.empty() && !m_paired_pos_2.empty())
+	{
+		while(!m_paired_pos_1.empty() && !m_paired_pos_2.empty() && m_paired_pos_1.front() < m_paired_pos_2.front())
+			m_paired_pos_1.pop();
+		while(!m_paired_pos_1.empty() && !m_paired_pos_2.empty() && m_paired_pos_2.front() < m_paired_pos_1.front())
+			m_paired_pos_2.pop();
+		while(!m_paired_pos_1.empty() && !m_paired_pos_2.empty() && m_paired_pos_1.front() == m_paired_pos_2.front())
+		{
+			cout << m_paired_pos_1.front() << endl;
+			m_paired_pos.push(m_paired_pos_1.front());
+			m_paired_pos_1.pop();
+			m_paired_pos_2.pop();
+		}
+	}
+
+	// we process the first file
+	m_paired_pos_1 = m_paired_pos;
+	char *out_tmp = new char[strlen(out) + 5];
+	strcpy(out_tmp, out);
+	strcat(out_tmp, ".tmp");
+
+	ofstream m_out;
+	m_out.open(out, ofstream::out);
+	if(!m_out)
+		throw logic_error("ERROR: while opening file");
+	ifstream fin;
+	fin.open(out_tmp, std::ifstream::in);
+	int read_number = 1;
+	int line = 1;
+	char c;
+	while(fin.good())
+	{
+		c = fin.get();
+		if(c == '\n' || c == '\r')
+			line++;
+		if(read_number != m_paired_pos_1.front())
+			m_out << c;
+		if(line == 4)
+		{
+			if(read_number == m_paired_pos_1.front())
+				m_paired_pos_1.pop();
+			read_number++;
+			line = 0;
+		}
+	}
+	m_out.close();
+	fin.close();
+	remove(out_tmp);
+	delete[] out_tmp;
+
+	// we process the second file
+	m_paired_pos_1 = m_paired_pos;
+	out_tmp = new char[strlen(outpair) + 5];
+	strcpy(out_tmp, outpair);
+	strcat(out_tmp, ".tmp");
+
+	m_out;
+	m_out.open(outpair, ofstream::out);
+	if(!m_out)
+		throw logic_error("ERROR: while opening file");
+	fin.open(out_tmp, std::ifstream::in);
+
+	read_number = 1;
+	line = 1;
+	while(fin.good())
+	{
+		c = fin.get();
+		if(c == '\n' || c == '\r')
+			line++;
+		if(read_number != m_paired_pos_1.front())
+			m_out << c;
+		if(line == 4)
+		{
+			if(read_number == m_paired_pos_1.front())
+				m_paired_pos_1.pop();
+			read_number++;
+			line = 0;
+		}
+	}
+	m_out.close();
+	fin.close();
+	remove(out_tmp);
+	delete[] out_tmp;
+}
+
 // Definition of the non static stuff
 
-Read::Read(gzFile* fin, char* out, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length, bool estimate)
+// estimation of base probability for each read
+Read::Read(gzFile* fin, char* out, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length, bool estimate, int paired)
 {
 	try
 	{
@@ -84,22 +202,33 @@ Read::Read(gzFile* fin, char* out, char* N, int phred_score, int min_read_size, 
 		constructor(fin, N, phred_score, min_read_size, min_polyN_size, read_number, remove_empty_reads, fill_empty_reads, fill_empty_reads_with, min_QC_phred, min_QC_length);
 		if(!m_out_open)
 		{
-			m_out.open(out, ofstream::out);
+			if(paired >= 1)
+			{
+				char *out_tmp = new char[strlen(out) + 5];
+				strcpy(out_tmp, out);
+				strcat(out_tmp, ".tmp");
+				m_out.open(out_tmp, ofstream::out);
+				delete[] out_tmp;
+			}
+			else
+				m_out.open(out, ofstream::out);
 			if(!m_out)
 				throw logic_error("ERROR: while opening file");
 			m_out_open = true;
 		}
 		m_estimation = true;
 		m_sampled = false;
+		m_paired = paired;
 	}
 	catch(exception const& e)
 	{
-		cerr << "ERROR : " << e.what() << " in : Read::Read(gzFile* fin, Buffer* buffer, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number)" << endl;
+		cerr << "ERROR : " << e.what() << " " << out << " in : Read::Read(gzFile* fin, Buffer* buffer, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number)" << endl;
 		exit(-1);
 	}
 }
 
-Read::Read(gzFile* fin, char* out, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length)
+// static base probability
+Read::Read(gzFile* fin, char* out, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length, int paired)
 {
 	try
 	{
@@ -107,21 +236,32 @@ Read::Read(gzFile* fin, char* out, char* N, int phred_score, int min_read_size, 
 		constructor(fin, N, phred_score, min_read_size, min_polyN_size, read_number, remove_empty_reads, fill_empty_reads, fill_empty_reads_with, min_QC_phred, min_QC_length);
 		if(!m_out_open)
 		{
-			m_out.open(out, ofstream::out);
+			if(paired >= 1)
+			{
+				char *out_tmp = new char[strlen(out) + 5];
+				strcpy(out_tmp, out);
+				strcat(out_tmp, ".tmp");
+				m_out.open(out_tmp, ofstream::out);
+				delete[] out_tmp;
+			}
+			else
+				m_out.open(out, ofstream::out);
 			if(!m_out)
 				throw logic_error("ERROR: while opening file");
 			m_out_open = true;
 		}
 		m_sampled = false;
 		m_estimation = false;
+		m_paired = paired;
 	}
 	catch(exception const& e)
 	{
-		cerr << "ERROR : " << e.what() << " in : Read::Read(gzFile* fin, Buffer* buffer, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number)" << endl;
+		cerr << "ERROR : " << e.what() << " " << out << " in : Read::Read(gzFile* fin, Buffer* buffer, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number)" << endl;
 		exit(-1);
 	}
 }
 
+// sampling of base probability
 Read::Read(gzFile* fin, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length)
 {
 	try
@@ -130,6 +270,7 @@ Read::Read(gzFile* fin, char* N, int phred_score, int min_read_size, int min_pol
 		constructor(fin, N, phred_score, min_read_size, min_polyN_size, read_number, remove_empty_reads, fill_empty_reads, fill_empty_reads_with, min_QC_phred, min_QC_length);
 		m_sampled = true;
 		m_estimation = false;
+		m_paired = 0;
 	}
 	catch(exception const& e)
 	{
@@ -144,7 +285,7 @@ void Read::constructor(gzFile* fin,char* N, int phred_score, int min_read_size, 
 		m_size = 0;
 		m_cut = 0;
 		m_read_number = read_number;
-		m_proba = NULL;
+		m_proba = nullptr;
 		m_log_read = log(0.0);
 		m_log_polyN = log(0.0);
 		int line = 1;
@@ -203,6 +344,9 @@ void Read::constructor(gzFile* fin,char* N, int phred_score, int min_read_size, 
 		}
 		else
 			m_QC_check = false;
+
+		if(line < 4)
+			m_init = false;
 }
 
 Read::~Read()
@@ -222,7 +366,7 @@ Read& Read::operator=(Read const& readbis)
 			m_name = readbis.m_name;
 			m_seq = readbis.m_seq;
 			m_phred = readbis.m_phred;
-			m_proba = NULL;
+			m_proba = nullptr;
 			m_log_read = readbis.m_log_read;
 			m_log_polyN = readbis.m_log_polyN;
 			m_N = readbis.m_N;
@@ -231,7 +375,7 @@ Read& Read::operator=(Read const& readbis)
 			m_stop = readbis.m_stop;
 			m_sampled = readbis.m_sampled;
 			m_estimation = readbis.m_estimation;
-			m_init = true;
+			m_init = readbis.m_init;
 		}
 		return *this;
 	}
@@ -246,10 +390,13 @@ void Read::run()
 {
 	try
 	{
-		if(m_sampled || m_estimation)
-			polyNtrimEstimate();
-		else
-			polyNtrim();
+		if(m_init)
+		{
+			if(m_sampled || m_estimation)
+				polyNtrimEstimate();
+			else
+				polyNtrim();
+		}
 	}
 	catch(exception const& e)
 	{
@@ -261,15 +408,18 @@ void Read::run()
 void Read::done()
 {
 	try
-	{	
-		if(m_sampled && !m_estimation)
-			baseProbaTotal();
-		if(!m_sampled && !m_estimation)
-			writeRead();
-		if(m_estimation)
+	{
+		if(m_init)
 		{
-			baseProbaTotal();
-			writeRead();
+			if(m_sampled && !m_estimation)
+				baseProbaTotal();
+			if(!m_sampled && !m_estimation)
+				writeRead();
+			if(m_estimation)
+			{
+				baseProbaTotal();
+				writeRead();
+			}
 		}
 	}
 	catch(exception const& e)
@@ -369,6 +519,8 @@ void Read::polyNtrimEstimate()
 
 			// we find the maximum likelihood cut point between a read segment and a polyN segment 
 			double logL = log(0.0);
+			m_log_read = log(0.0);
+			m_log_polyN = log(0.0);
 			double newlogL = 1.0;
 			double oldlogL = 0.0;
 			while( labs(newlogL - oldlogL) > 0.01 && iter < 100 )
@@ -417,21 +569,23 @@ double Read::read(int begin, int end)
 		double logL = 0.0;
 		if(begin < end)
 		{
-			// if(end == m_start) // if this is the first iteration we have to compute the full logL
-			// {
+			if(end == m_start) // if this is the first iteration we have to compute the full logL
+			{
 				logL = (end - begin ) * log(1.0 / (end - begin));
 				for (int i= begin; i < end; i++)
 				{
 					logL += probaBaseDict(m_seq.at(i), m_proba[i], m_G_probability, m_C_probability, m_A_probability, m_T_probability) ;
 				}
-			// }
-			// else // else we only have to add the new base
-			// {
-			// 	logL = m_log_read - (end - begin -1) * log(1.0 / (end - begin)); // we remove the old uniform probability
-			// 	logL += (end - begin) * log(1.0 / (end - begin)) + probaBaseDict(m_seq.at(end-1), m_proba[end-1], m_G_probability, m_C_probability, m_A_probability, m_T_probability); // we add the new base plus the new uniform probability
-			// }
+			}
+			else // else we only have to add the new base
+			{
+				if(end != m_start+1)
+					logL = m_log_read - (end - begin -1) * log(1.0 / (end - begin - 1)); // we remove the old uniform probability
+				logL += (end - begin) * log(1.0 / (end - begin)); // we add the new uniform probability
+				logL += probaBaseDict(m_seq.at(end-1), m_proba[end-1], m_G_probability, m_C_probability, m_A_probability, m_T_probability); // we add the new base probability
+			}
 		}
-		// m_log_read = logL;
+		m_log_read = logL; // we record the new logL
 		return logL;
 	}
 	catch(exception const& e)
@@ -448,21 +602,23 @@ double Read::readEstimate(int begin, int end, double pG, double pC, double pA, d
 		double logL = 0.0;
 		if(begin < end)
 		{
-			// if(end - m_start == 1) // if this is the first iteration we have to compute the full logL
-			// {
+			if(end == m_start) // if this is the first iteration we have to compute the full logL
+			{
 				logL = (end - begin ) * log(1.0 / (end - begin));
 				for (int i= begin; i < end; i++)
 				{
 					logL += probaBaseDict(m_seq.at(i), m_proba[i], pG, pC, pA, pT);
 				}
-			// }
-			// else // else we only have to add the new base
-			// {
-			// 	logL = m_log_read - (end - begin -1) * log(1.0 / (end - begin)); // we remove the old uniform probability
-			// 	logL += (end - begin) * log(1.0 / (end - begin)) + probaBaseDict(m_seq.at(end-1), m_proba[end-1], pG, pC, pA, pT); // we add the new base plus the new uniform probability
-			// }
+			}
+			else // else we only have to add the new base
+			{
+				if(end != m_start+1)
+					logL = m_log_read - (end - begin -1) * log(1.0 / (end - begin -1)); // we remove the old uniform probability
+				logL += (end - begin) * log(1.0 / (end - begin)); // we add the new uniform probability
+				logL += probaBaseDict(m_seq.at(end-1), m_proba[end-1], pG, pC, pA, pT); // we add the new base probability
+			}
 		}
-		// m_log_read = logL;
+		m_log_read = logL; // we record the new logL
 		return logL;
 	}
 	catch(exception const& e)
@@ -481,8 +637,8 @@ double Read::polyN(int begin, int end)
 		double logL = 0.0;
 		if(begin < end)
 		{
-			// if( begin == m_start) // if this is the first iteration we have to compute the full logL
-			// {
+			if(begin == m_start) // if this is the first iteration we have to compute the full logL
+			{
 				double unifN = log(1.0 / (end - begin));
 				double unif = log(1.0 / (end - begin)) + log(1.0/4.0);
 				for (int i= begin; i < end; i++)
@@ -492,18 +648,18 @@ double Read::polyN(int begin, int end)
 					else
 						logL += unif + log(1-m_proba[i]);
 				}
-			// }
-			// else
-			// {
-			// 	logL = m_log_polyN - (end - begin +1) * log(1.0 / (end - begin)); // we remove the old uniform probability
-			// 	logL += (end - begin) * log(1.0 / (end - begin)); // we add the new uniform probability
-			// 	if ((char)toupper(m_seq.at(begin-1)) == m_N) // we remove the old first base
-			// 		logL -= log(m_proba[begin-1]);
-			// 	else
-			// 		logL -= log(1.0/4.0) + log(1-m_proba[begin-1]);
-			// }
+			}
+			else
+			{
+				logL = m_log_polyN - (end - begin +1) * log(1.0 / (end - begin +1)); // we remove the old uniform probability
+				logL += (end - begin) * log(1.0 / (end - begin)); // we add the new uniform probability
+				if ((char)toupper(m_seq.at(begin-1)) == m_N) // we remove the old first base
+					logL -= log(m_proba[begin-1]);
+				else
+					logL -= log(1.0/4.0) + log(1-m_proba[begin-1]);
+			}
 		}
-		// m_log_polyN = logL;
+		m_log_polyN = logL;
 		return logL;
 	}
 	catch(exception const& e)
@@ -597,9 +753,9 @@ void Read::writeRead()
 			}
 			else
 			{
-				if(!m_remove_empty_reads)
+				if(!m_remove_empty_reads || m_paired > 0)
 				{
-					if(m_fill_empty_reads)
+					if(m_fill_empty_reads && m_paired == 0)
 					{
 						if (m_name.at(0) == '@')
 							m_out << m_name << endl;
@@ -615,13 +771,20 @@ void Read::writeRead()
 					}
 					else
 					{
-						if (m_name.at(0) == '@')
-							m_out << m_name << endl;
-						else
-							m_out << "@" << m_name << endl;
-						m_out << endl << "+" << endl;
-						m_out << endl;
-						m_trimmed_reads++;
+						if(m_name.size() > 0)
+						{
+							if (m_name.at(0) == '@')
+								m_out << m_name << endl;
+							else
+								m_out << "@" << m_name << endl;
+							m_out << endl << "+" << endl;
+							m_out << endl;
+							m_trimmed_reads++;
+							if (m_paired == 1)
+								m_paired_pos_1.push(m_read_number);
+							if (m_paired == 2)
+								m_paired_pos_2.push(m_read_number);
+						}
 					}
 				}
 				m_empty_reads++;

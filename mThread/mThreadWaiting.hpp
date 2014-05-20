@@ -23,11 +23,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <thread>
 #include <mutex>
 #include <condition_variable>
-#include <deque>
 #include <exception>
 #include <stdexcept>
 #include <iostream>
 #include <string>
+#include "mThreadCircular.hpp"
 
 using namespace std;
 
@@ -52,65 +52,68 @@ class mThreadWaiting
 	protected:
 	
 	void push_back(T* x);
-	T* pop_front();
+	T* pop_front(int* number);
 	
-	int size();
+	int can_add(int number);
+	int can_get();
+	// int size();
 	int true_size();
-	int mThread_iteration;
+	int mThreadWaiting_iteration;
 	
 	// communication between the thread
-	mutex mThread_onebyone;
-	mutex mThread_empty; // if the list is empty we wait new jobs
-	mutex mThread_full; // if the list is full we wait before new jobs
-	condition_variable mThread_empty_cond;
-	condition_variable mThread_full_cond;
+	mutex mThreadWaiting_onebyone;
+	mutex mThreadWaiting_empty; // if the list is empty we wait new jobs
+	mutex mThreadWaiting_full; // if the list is full we wait before new jobs
+	condition_variable mThreadWaiting_empty_cond;
+	condition_variable mThreadWaiting_full_cond;
 	
 	// status of the waiting list
-	int mThread_size; // size of the list
-	int mThread_pos_front; // we isrun jobs at the front
-	int mThread_pos_back; // we add new jobs at the back
-	deque<T*> mThread_waiting; // mThread_iteration of thread waiting
-	
-	bool mThread_isrun;
-	bool mThread_stop_signal;
+	int mThreadWaiting_size; // size of the list
+	int mThreadWaiting_pos_front; // we isrun jobs at the front
+	int mThreadWaiting_pos_back; // we add new jobs at the back
+	// deque<T*> mThreadWaiting_waiting; // mThreadWaiting_iteration of thread waiting
+	mThreadCircular<T> mThreadWaiting_loop;
+
+	bool mThreadWaiting_isrun;
+	bool mThreadWaiting_stop_signal;
 };
 
 template <typename T>
 bool mThreadWaiting<T>::isrun()
 {
-	unique_lock<mutex> lk(mThread_onebyone);
-	return mThread_isrun;
+	unique_lock<mutex> lk(mThreadWaiting_onebyone);
+	return mThreadWaiting_isrun;
 }
 
 template <typename T>
 void mThreadWaiting<T>::set_isrun(bool isrun)
 {
-	unique_lock<mutex> lk(mThread_onebyone);
-	mThread_isrun = isrun;
+	unique_lock<mutex> lk(mThreadWaiting_onebyone);
+	mThreadWaiting_isrun = isrun;
 	if(!isrun)
-		mThread_empty_cond.notify_one();
+		mThreadWaiting_empty_cond.notify_one();
 }
 
 template <typename T>
 bool mThreadWaiting<T>::stop()
 {
-	unique_lock<mutex> lk(mThread_onebyone);
-	return mThread_stop_signal;
+	unique_lock<mutex> lk(mThreadWaiting_onebyone);
+	return mThreadWaiting_stop_signal;
 }
 
 template <typename T>
 bool mThreadWaiting<T>::stop_all()
 {
-	mThread_full_cond.notify_all();
-	mThread_empty_cond.notify_all();
+	mThreadWaiting_full_cond.notify_all();
+	mThreadWaiting_empty_cond.notify_all();
 }
 
 template <typename T>
 void mThreadWaiting<T>::set_stop(bool isrun)
 {
-	unique_lock<mutex> lk(mThread_onebyone);
-	mThread_stop_signal = isrun;
-	mThread_empty_cond.notify_one();
+	unique_lock<mutex> lk(mThreadWaiting_onebyone);
+	mThreadWaiting_stop_signal = isrun;
+	mThreadWaiting_empty_cond.notify_one();
 }
 
 
@@ -120,13 +123,14 @@ mThreadWaiting<T>::mThreadWaiting(int size)
 {
 	try
 	{
-		mThread_isrun = true;
-		mThread_stop_signal = false;
-		mThread_size = size;
-		mThread_pos_front = -1;
-		mThread_pos_back = -1;
-		mThread_waiting.clear();
-		mThread_iteration = -1;
+		mThreadWaiting_isrun = true;
+		mThreadWaiting_stop_signal = false;
+		mThreadWaiting_size = size;
+		mThreadWaiting_pos_front = -1;
+		mThreadWaiting_pos_back = -1;
+		// mThreadWaiting_waiting.clear();
+		mThreadWaiting_loop.init(size);
+		mThreadWaiting_iteration = -1;
 	}
 	catch(exception const& e)
 	{
@@ -137,9 +141,9 @@ mThreadWaiting<T>::mThreadWaiting(int size)
 template<typename T>
 mThreadWaiting<T>::~mThreadWaiting()
 {
-	unique_lock<mutex> full(mThread_full);
+	unique_lock<mutex> full(mThreadWaiting_full);
 	while(true_size() >= 1)
-		mThread_empty_cond.wait(full);
+		mThreadWaiting_empty_cond.wait(full);
 }
 
 // we add jobs at the waiting list
@@ -148,9 +152,9 @@ void mThreadWaiting<T>::add(T* x)
 {
 	try
 	{
-		unique_lock<mutex> full(mThread_full);
-		while(size() >= mThread_size)
-			mThread_full_cond.wait(full); // if the list is full we wait
+		unique_lock<mutex> full(mThreadWaiting_full);
+		while(!can_add(mThreadWaiting_iteration+1))
+			mThreadWaiting_full_cond.wait(full); // if the list is full we wait
 		push_back(x); // when there is room we add the job
 	}
 	catch(exception const& e)
@@ -166,11 +170,10 @@ void mThreadWaiting<T>::get(T** x, int* number)
 {
 	try
 	{
-		unique_lock<mutex> empty(mThread_empty);
-		while(size() <= 1 && !mThread_stop_signal)
-			mThread_empty_cond.wait(empty); // if the list in empty we wait
-		*x = pop_front(); // when there is a job we get it
-		*number = mThread_iteration;
+		unique_lock<mutex> empty(mThreadWaiting_empty);
+		while(!can_get() && !mThreadWaiting_stop_signal)
+			mThreadWaiting_empty_cond.wait(empty); // if the list in empty we wait
+		*x = pop_front(number); // when there is a job we get it
 	}
 	catch(exception const& e)
 	{
@@ -183,37 +186,30 @@ void mThreadWaiting<T>::get(T** x, int* number)
 template<typename T>
 void mThreadWaiting<T>::push_back(T* x)
 {
-	unique_lock<mutex> lk(mThread_onebyone); // we add one job at the time
-	mThread_waiting.push_back(x); // add job
-	mThread_empty_cond.notify_one(); // we signal one thread waiting for a job that the list is not empty anymore (in the get() function)
+	unique_lock<mutex> lk(mThreadWaiting_onebyone); // we add one job at the time
+	mThreadWaiting_iteration++;
+	mThreadWaiting_loop.add(x, mThreadWaiting_iteration);
+	mThreadWaiting_empty_cond.notify_one(); // we signal one thread waiting for a job that the list is not empty anymore (in the get() function)
 }
 
 // getting a job from the list
 template<typename T>
-T* mThreadWaiting<T>::pop_front()
+T* mThreadWaiting<T>::pop_front(int* number)
 {
 	try
 	{
-		unique_lock<mutex> lk(mThread_onebyone); // we get one job at the time
+		unique_lock<mutex> lk(mThreadWaiting_onebyone); // we get one job at the time
 		T* value = nullptr;
 
-		if(mThread_waiting.size() <= 0)
-			value = nullptr; //if the list is empty we get nothing
-		else
+		value = mThreadWaiting_loop.pop(number);
+
+		if(mThreadWaiting_stop_signal) // if we get the stop signal there will be no new job added so their is no reason for the thread to wait for the list to fill up
 		{
-			value = mThread_waiting.at(0); // create a new object from the one at the front T need to have a initialization / copy
-			mThread_iteration++;
-			mThread_waiting.at(0) = nullptr;
-			mThread_waiting.pop_front(); // remove the element at the front and delete it
-		}
-		if(mThread_stop_signal) // if we get the stop signal there will be no new job added so their is no reason for the thread to wait for the list to fill up
-		{
-			mThread_isrun = false;
-			mThread_empty_cond.notify_all();
+			mThreadWaiting_isrun = false;
+			mThreadWaiting_empty_cond.notify_all();
 		}
 		else // else we allow only one thread to continue
-			mThread_full_cond.notify_one();
-
+			mThreadWaiting_full_cond.notify_one();
 		return value;
 	}
 	catch(exception const& e)
@@ -224,26 +220,45 @@ T* mThreadWaiting<T>::pop_front()
 }
 
 template<typename T>
-int mThreadWaiting<T>::size()
+int mThreadWaiting<T>::can_add(int number)
 {
-	unique_lock<mutex> lk(mThread_onebyone);
-	if(mThread_isrun)
-		return mThread_waiting.size();
-	else
-		return mThread_size;
+	unique_lock<mutex> lk(mThreadWaiting_onebyone);
+	// if(mThreadWaiting_isrun) // if we didn't get the stop signal we proceed
+	// {
+		return mThreadWaiting_loop.can_add(number);
+	// }
+	// else // if we got the stop signal we can finish every thing even if the list is full
+	// 	return true;
+}
+
+template<typename T>
+int mThreadWaiting<T>::can_get()
+{
+	try
+	{
+		unique_lock<mutex> lk(mThreadWaiting_onebyone);
+		// if(!mThreadWaiting_isrun)
+		// 	return false;
+		return mThreadWaiting_loop.can_get();
+	}
+	catch(exception const& e)
+	{
+		cerr << "ERROR : " << e.what() << " in : int mThreadWaiting<T>::can_get()" << endl;
+		exit(-1);
+	}
 }
 
 template<typename T>
 int mThreadWaiting<T>::true_size()
 {
-	unique_lock<mutex> lk(mThread_onebyone);
-	return mThread_waiting.size();
+	unique_lock<mutex> lk(mThreadWaiting_onebyone);
+	return mThreadWaiting_loop.size();
 }
 
 template<typename T>
 string mThreadWaiting<T>::output()
 {
-		return "W : "+to_string(mThread_waiting.size());
+		return "W : "+to_string(mThreadWaiting_loop.size());
 }
 
 #endif
