@@ -1,5 +1,5 @@
 /*
-polyNtrimmer poly nucleotide trimming tool
+UrQt quality and poly nucleotide trimming tool
 Copyright (C) 2013  Laurent Modolo
 
 This program is free software: you can redistribute it and/or modify
@@ -42,12 +42,7 @@ class mThreadDone
 	
 	void add(T* x, int number);
 	
-	bool stop();
-	bool stop_all();
-	void set_stop(bool isrun);
-	void set_isrun(bool isrun);
-	bool isrun();
-	
+	void stop();
 	void join();
 	
 	string output();
@@ -84,45 +79,14 @@ class mThreadDone
 	
 	bool mThreadDone_init;
 	bool mThreadDone_isrun;
-	bool mThreadDone_stop_signal;
 };
 
 template <typename T>
-bool mThreadDone<T>::isrun()
+void mThreadDone<T>::stop()
 {
 	unique_lock<mutex> lk(mThreadDone_onebyone);
-	return mThreadDone_isrun;
-}
-
-template <typename T>
-void mThreadDone<T>::set_isrun(bool isrun)
-{
-	unique_lock<mutex> lk(mThreadDone_onebyone);
-	mThreadDone_isrun = isrun;
-	if(!isrun)
-		mThreadDone_empty_cond.notify_one();
-}
-
-template <typename T>
-bool mThreadDone<T>::stop()
-{
-	unique_lock<mutex> lk(mThreadDone_onebyone);
-	return mThreadDone_stop_signal;
-}
-
-template <typename T>
-bool mThreadDone<T>::stop_all()
-{
-	mThreadDone_full_cond.notify_all();
+	mThreadDone_isrun = false;
 	mThreadDone_empty_cond.notify_all();
-}
-
-template <typename T>
-void mThreadDone<T>::set_stop(bool isrun)
-{
-	unique_lock<mutex> lk(mThreadDone_onebyone);
-	mThreadDone_stop_signal = isrun;
-	mThreadDone_empty_cond.notify_one();
 }
 
 // initialization of the waiting list
@@ -132,7 +96,6 @@ mThreadDone<T>::mThreadDone()
 	try
 	{
 		mThreadDone_isrun = false;
-		mThreadDone_stop_signal = true;
 		mThreadDone_init = false;
 	}
 	catch(exception const& e)
@@ -149,7 +112,6 @@ mThreadDone<T>::mThreadDone(int size) : mThreadDone_thread( &mThreadDone<T>::run
 	{
 		unique_lock<mutex> lk(mThreadDone_onebyone);
 		mThreadDone_isrun = true;
-		mThreadDone_stop_signal = false;
 		mThreadDone_size = size;
 		mThreadDone_pos_front = -1;
 		mThreadDone_pos_back = -1;
@@ -176,7 +138,8 @@ mThreadDone<T>::~mThreadDone()
 		{
 			while(true_size() >= 1)
 				mThreadDone_empty_cond.wait(full);
-			join();
+			if(mThreadDone_thread.joinable())
+				mThreadDone_thread.join();
 		}
 		mThreadDone_init = false;
 	}
@@ -249,7 +212,7 @@ void mThreadDone<T>::get(T** x)
 		if(mThreadDone_init)
 		{
 			unique_lock<mutex> empty(mThreadDone_empty);
-			while(!can_get() && !mThreadDone_stop_signal)
+			while(!can_get())
 				mThreadDone_empty_cond.wait(empty); // if the list in empty we wait
 			*x = pop_front(); // when there is a job we get it
 		}
@@ -282,14 +245,12 @@ T* mThreadDone<T>::pop_front()
 		T* value = nullptr;
 		value = mThreadDone_loop.pop();
 
-		if(mThreadDone_stop_signal) // if we get the stop signal there will be no new job added so their is no reason for the thread to wait for the list to fill up
+		if(!mThreadDone_isrun) // if we get the stop signal there will be no new job added so their is no reason for the thread to wait for the list to fill up
 		{
-			mThreadDone_isrun = false;
 			mThreadDone_empty_cond.notify_all();
 		}
 		else // else we allow only one thread to continue
 			mThreadDone_full_cond.notify_one();
-
 		return value;
 	}
 	catch(exception const& e)
@@ -302,13 +263,19 @@ T* mThreadDone<T>::pop_front()
 template<typename T>
 int mThreadDone<T>::can_add(int number)
 {
-	unique_lock<mutex> lk(mThreadDone_onebyone);
-	if(mThreadDone_isrun) // if we didn't get the stop signal we proceed
+	try
 	{
-		return mThreadDone_loop.can_add(number);
+		unique_lock<mutex> lk(mThreadDone_onebyone);
+		if(mThreadDone_isrun) // if we didn't get the stop signal we proceed
+			return mThreadDone_loop.can_add(number);
+		else // if we got the stop signal we can finish every thing even if the list is full
+			throw logic_error("try to add task after the stop signal");
 	}
-	else // if we got the stop signal we can finish every thing even if the list is full
-		return true;
+	catch(exception const& e)
+	{
+		cerr << "ERROR : " << e.what() << " in : int mThreadDone<T>::can_add(int number)" << endl;
+		exit(-1);
+	}
 }
 
 template<typename T>
@@ -317,9 +284,9 @@ int mThreadDone<T>::can_get()
 	try
 	{
 		unique_lock<mutex> lk(mThreadDone_onebyone);
-		if(!mThreadDone_isrun)
-			return false;
-		return mThreadDone_loop.can_get();
+		if(mThreadDone_isrun)
+			return mThreadDone_loop.can_get();
+		return true;
 	}
 	catch(exception const& e)
 	{
@@ -338,9 +305,14 @@ int mThreadDone<T>::true_size()
 template <typename T>
 void mThreadDone<T>::join()
 {
+	unique_lock<mutex> full(mThreadDone_full);
 	if(mThreadDone_init)
+	{
+		while(true_size() >= 1)
+			mThreadDone_empty_cond.wait(full);
 		if(mThreadDone_thread.joinable())
 			mThreadDone_thread.join();
+	}
 }
 
 template<typename T>

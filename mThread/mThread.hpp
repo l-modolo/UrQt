@@ -1,5 +1,5 @@
 /*
-polyNtrimmer poly nucleotide trimming tool
+UrQt quality and poly nucleotide trimming tool
 Copyright (C) 2013  Laurent Modolo
 
 This program is free software: you can redistribute it and/or modify
@@ -39,6 +39,7 @@ class mThread
 	public:
 	mThread(int number);
 	mThread(int number, bool done_action);
+	~mThread();
 	
 	void stop();
 	void add(T*);
@@ -47,6 +48,7 @@ class mThread
 	void run(mThreadWaiting<T>* todo, mThreadDone<T>* done);
 
 	bool mThread_done_task;
+	bool mThread_stop;
 	mThreadWaiting<T> mThread_waiting;
 	mThreadDone<T> mThread_done;
 	vector< thread > mThread_running;
@@ -57,6 +59,7 @@ class mThread
 template <typename T>
 mThread<T>::mThread(int number) : mThread_waiting(number*10), mThread_done()
 {
+	mThread_stop = false;
 	mThread_done_task = false;
 	for(int i = 0; i < number; i++)
 		mThread_running.push_back( thread(&mThread<T>::run, this, &mThread_waiting, &mThread_done) );
@@ -65,11 +68,21 @@ mThread<T>::mThread(int number) : mThread_waiting(number*10), mThread_done()
 // we create a list of number thread ready to run and number*10 thread_waiting to
 // pileup the jobs to do by those threads
 template <typename T>
-mThread<T>::mThread(int number, bool done_action) : mThread_waiting(number*1000), mThread_done(number*4000)
+mThread<T>::mThread(int number, bool done_action) : mThread_waiting(number*4000), mThread_done(number*1000)
 {
+	mThread_stop = false;
 	mThread_done_task = true;
 	for(int i = 0; i < number; i++)
 		mThread_running.push_back( thread(&mThread<T>::run, this, &mThread_waiting, &mThread_done) );
+}
+
+// we create a list of number thread ready to run and number*10 thread_waiting to
+// pileup the jobs to do by those threads
+template <typename T>
+mThread<T>::~mThread()
+{
+	if(!mThread_stop)
+		stop();
 }
 
 template <typename T>
@@ -117,12 +130,14 @@ template <typename T>
 void mThread<T>::stop()
 {
 	// we signal the jobs waiting that we wont add new jobs
-	mThread_waiting.set_stop(true);
+	mThread_waiting.stop();
 	// we wait for each jobs to finish
 	for(int i = 0; i < mThread_running.size(); i++)
 			(mThread_running.at(i)).join();
-	mThread_done.set_stop(true);
+	mThread_done.stop();
 	mThread_done.join();
+	mThread_stop = true;
+
 }
 
 #endif

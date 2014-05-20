@@ -1,5 +1,5 @@
 /*
-polyNtrimmer poly nucleotide trimming tool
+UrQt quality and poly nucleotide trimming tool
 Copyright (C) 2013  Laurent Modolo
 
 This program is free software: you can redistribute it and/or modify
@@ -41,11 +41,7 @@ class mThreadWaiting
 	void add(T* x);
 	void get(T** x, int* number);
 	
-	bool stop();
-	bool stop_all();
-	void set_stop(bool isrun);
-	void set_isrun(bool isrun);
-	bool isrun();
+	void stop();
 
 	string output();
 	
@@ -75,47 +71,15 @@ class mThreadWaiting
 	mThreadCircular<T> mThreadWaiting_loop;
 
 	bool mThreadWaiting_isrun;
-	bool mThreadWaiting_stop_signal;
 };
 
 template <typename T>
-bool mThreadWaiting<T>::isrun()
+void mThreadWaiting<T>::stop()
 {
 	unique_lock<mutex> lk(mThreadWaiting_onebyone);
-	return mThreadWaiting_isrun;
-}
-
-template <typename T>
-void mThreadWaiting<T>::set_isrun(bool isrun)
-{
-	unique_lock<mutex> lk(mThreadWaiting_onebyone);
-	mThreadWaiting_isrun = isrun;
-	if(!isrun)
-		mThreadWaiting_empty_cond.notify_one();
-}
-
-template <typename T>
-bool mThreadWaiting<T>::stop()
-{
-	unique_lock<mutex> lk(mThreadWaiting_onebyone);
-	return mThreadWaiting_stop_signal;
-}
-
-template <typename T>
-bool mThreadWaiting<T>::stop_all()
-{
-	mThreadWaiting_full_cond.notify_all();
-	mThreadWaiting_empty_cond.notify_all();
-}
-
-template <typename T>
-void mThreadWaiting<T>::set_stop(bool isrun)
-{
-	unique_lock<mutex> lk(mThreadWaiting_onebyone);
-	mThreadWaiting_stop_signal = isrun;
+	mThreadWaiting_isrun = false;
 	mThreadWaiting_empty_cond.notify_one();
 }
-
 
 // initialisation of the wainting list
 template<typename T>
@@ -124,7 +88,6 @@ mThreadWaiting<T>::mThreadWaiting(int size)
 	try
 	{
 		mThreadWaiting_isrun = true;
-		mThreadWaiting_stop_signal = false;
 		mThreadWaiting_size = size;
 		mThreadWaiting_pos_front = -1;
 		mThreadWaiting_pos_back = -1;
@@ -171,7 +134,7 @@ void mThreadWaiting<T>::get(T** x, int* number)
 	try
 	{
 		unique_lock<mutex> empty(mThreadWaiting_empty);
-		while(!can_get() && !mThreadWaiting_stop_signal)
+		while(!can_get())
 			mThreadWaiting_empty_cond.wait(empty); // if the list in empty we wait
 		*x = pop_front(number); // when there is a job we get it
 	}
@@ -203,11 +166,8 @@ T* mThreadWaiting<T>::pop_front(int* number)
 
 		value = mThreadWaiting_loop.pop(number);
 
-		if(mThreadWaiting_stop_signal) // if we get the stop signal there will be no new job added so their is no reason for the thread to wait for the list to fill up
-		{
-			mThreadWaiting_isrun = false;
+		if(!mThreadWaiting_isrun) // if we get the stop signal there will be no new job added so their is no reason for the thread to wait for the list to fill up
 			mThreadWaiting_empty_cond.notify_all();
-		}
 		else // else we allow only one thread to continue
 			mThreadWaiting_full_cond.notify_one();
 		return value;
@@ -222,13 +182,19 @@ T* mThreadWaiting<T>::pop_front(int* number)
 template<typename T>
 int mThreadWaiting<T>::can_add(int number)
 {
-	unique_lock<mutex> lk(mThreadWaiting_onebyone);
-	// if(mThreadWaiting_isrun) // if we didn't get the stop signal we proceed
-	// {
-		return mThreadWaiting_loop.can_add(number);
-	// }
-	// else // if we got the stop signal we can finish every thing even if the list is full
-	// 	return true;
+	try
+	{
+		unique_lock<mutex> lk(mThreadWaiting_onebyone);
+		if(mThreadWaiting_isrun) // if we didn't get the stop signal we proceed
+			return mThreadWaiting_loop.can_add(number);
+		else // if we got the stop signal we can finish every thing even if the list is full
+			throw logic_error("try to add task after the stop signal");
+	}
+	catch(exception const& e)
+	{
+		cerr << "ERROR : " << e.what() << " in : int mThreadWaiting<T>::can_add(int number)" << endl;
+		exit(-1);
+	}
 }
 
 template<typename T>
@@ -237,9 +203,9 @@ int mThreadWaiting<T>::can_get()
 	try
 	{
 		unique_lock<mutex> lk(mThreadWaiting_onebyone);
-		// if(!mThreadWaiting_isrun)
-		// 	return false;
-		return mThreadWaiting_loop.can_get();
+		if(mThreadWaiting_isrun)
+			return mThreadWaiting_loop.can_get();
+		return true;
 	}
 	catch(exception const& e)
 	{

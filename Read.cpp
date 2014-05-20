@@ -1,5 +1,5 @@
 /*
-polyNtrimmer poly nucleotide trimming tool
+UrQt quality and poly nucleotide trimming tool
 Copyright (C) 2013  Laurent Modolo
 
 This program is free software: you can redistribute it and/or modify

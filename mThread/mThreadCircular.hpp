@@ -1,5 +1,5 @@
 /*
-polyNtrimmer poly nucleotide trimming tool
+UrQt quality and poly nucleotide trimming tool
 Copyright (C) 2013  Laurent Modolo
 
 This program is free software: you can redistribute it and/or modify
@@ -231,7 +231,7 @@ bool mThreadCircular<T>::can_get()
 		if(!C_init)
 			throw logic_error("mThreadCircular not initisialized");
 
-		if(C_filled != 0 && C_number[C_start] != -1)
+		if(C_filled > 0 && C_number[C_start] != -1)
 			return true;
 		return false;
 	}

@@ -1,5 +1,5 @@
 /*
-polyNtrimmer poly nucleotide trimming tool
+UrQt quality and poly nucleotide trimming tool
 Copyright (C) 2013  Laurent Modolo
 
 This program is free software: you can redistribute it and/or modify
@@ -27,7 +27,7 @@ Segmentation::Segmentation(Read* const read, bool estimate)
 	m_cut_end = 0;
 	m_min_QC_phred = m_read->min_QC_phred();
 	m_min_QC_length = m_read->min_QC_length();
-	m_N = m_read->base();
+	m_N = (char)toupper(m_read->base());
 	m_G_probability = m_read->G_probability();
 	m_C_probability = m_read->C_probability();
 	m_A_probability = m_read->A_probability();
@@ -209,10 +209,13 @@ void Segmentation::polyNtrimEstimate()
 			}
 			if(m_cut_end != m_cut_begin)
 			{
-				if(m_cut_end < m_read->size()) // we keep the last A
-					m_cut_end++;
-				if(m_cut_begin > 0) // we keep the first A
-					m_cut_begin--;
+				if(m_N == 'G' || m_N == 'C' || m_N == 'A' || m_N == 'T')
+				{
+					if(m_cut_end < m_read->size()) // we keep the last N if we are not doing a QC
+						m_cut_end++;
+					if(m_cut_begin > 0) // we keep the first N if we are not doing a QC
+						m_cut_begin--;
+				}
 			}
 			if(QC_check()) // if the read pass the quality check
 				m_read->set_trim(true, m_cut_begin, m_cut_end);
@@ -308,7 +311,7 @@ double Segmentation::polyN(int begin, int end)
 				double unif = log(1.0 / (end - begin)) + log(1.0/4.0);
 				for (int i= begin; i < end; i++)
 				{
-					if ((char)toupper(m_read->seq(i)) == m_N)
+					if (m_read->seq(i) == m_N)
 						logL += unifN + log(m_proba[i]);
 					else
 						logL += unif + log(1-m_proba[i]);
@@ -318,7 +321,7 @@ double Segmentation::polyN(int begin, int end)
 			{
 				logL = m_log_polyN - (end - begin +1) * log(1.0 / (end - begin +1)); // we remove the old uniform probability
 				logL += (end - begin) * log(1.0 / (end - begin)); // we add the new uniform probability
-				if ((char)toupper(m_read->seq(begin-1)) == m_N) // we remove the old first base
+				if (m_read->seq(begin-1) == m_N) // we remove the old first base
 					logL -= log(m_proba[begin-1]);
 				else
 					logL -= log(1.0/4.0) + log(1-m_proba[begin-1]);
@@ -417,7 +420,7 @@ double Segmentation::reversePolyN(int begin, int end)
 				double unif = log(1.0 / (end - begin)) + log(1.0/4.0);
 				for (int i= begin; i < end; i++)
 				{
-					if ((char)toupper(m_read->seq(i)) == m_N)
+					if (m_read->seq(i) == m_N)
 						logL += unifN + log(m_proba[i]);
 					else
 						logL += unif + log(1-m_proba[i]);
@@ -428,7 +431,7 @@ double Segmentation::reversePolyN(int begin, int end)
 				if(end != m_read->start()+1)
 					logL = m_log_polyN - (end - begin -1) * log(1.0 / (end - begin -1)); // we remove the old uniform probability
 				logL += (end - begin) * log(1.0 / (end - begin)); // we add the new uniform probability
-				if ((char)toupper(m_read->seq(end-1)) == m_N) // we add the old first base
+				if (m_read->seq(end-1) == m_N) // we add the old first base
 					logL += log(m_proba[end-1]);
 				else
 					logL += log(1.0/4.0) + log(1-m_proba[end-1]);
