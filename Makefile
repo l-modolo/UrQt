@@ -1,5 +1,5 @@
 CC=g++
-CFLAGS=-lz -std=c++0x -pthread -I/usr/local/include -L/usr/local/lib #-g -DEBUG -pg -Werror
+CFLAGS=-lz -std=c++0x -pthread -I/usr/local/include -L/usr/local/lib # -g -DEBUG -pg
 
 all:gzstream.o Read.o Segmentation.o UrQt.cpp
 	$(CC) $(CFLAGS) gzstream.o Read.o Segmentation.o UrQt.cpp -o UrQt

@@ -35,7 +35,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <cctype>
 #include <mutex>
 #include "ezRateProgressBar.hpp"
-#include "gzstream.h"
+#include "gzstream.hpp"
 #include <iostream>
 #include <fstream>
 #include <stdlib.h>

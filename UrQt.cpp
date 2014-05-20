@@ -36,7 +36,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "ezRateProgressBar.hpp"
 #include "Read.hpp"
 
-#include "gzstream.h"
+#include "gzstream.hpp"
 #include <iostream>
 #include <fstream>
 #include <stdlib.h>
@@ -153,7 +153,7 @@ int main(int argc, char **argv)
 	
 	// the only required argument is the blast file
 	if(in == nullptr || out == nullptr || help){
-		cout <<  "UrQt.1.0.12" << endl;
+		cout <<  "UrQt.1.0.13" << endl;
 		cout <<  "Argument must be defined." << endl;
 		cout <<  "Usage: " << argv[0] <<"--in <input.fastq> --out <output.fastq>" << endl;
 		cout <<  "       --in input fastq file" << endl;
@@ -165,8 +165,8 @@ int main(int argc, char **argv)
 		cout <<  "    Trimming option:" << endl;
 		cout <<  "       --t <number>  minimum phred score for a ``good quality'' (default: 5)" << endl;
 		cout <<  "       --N <character>  polyN to trim (default: QC trimming)" << endl;
-		cout <<  "       --max_head_trim <number> maximum number of nucleotide trimmed at the head of the reads (default: 0)" << endl;
-		cout <<  "       --min_tail_trim <number> maximum number of nucleotide trimmed at the tail of the reads (default: 0)" << endl;
+		cout <<  "       --max_head_trim <number> maximum number of nucleotide trimmed at the head of the reads (default: read length)" << endl;
+		cout <<  "       --max_tail_trim <number> maximum number of nucleotide trimmed at the tail of the reads (default: read length)" << endl;
 		cout <<  "       --min_read_size <number> remove all reads smaller than this size after the trimming step (default: 0)" << endl;
 		cout <<  "       --pos <head|tail|both> (expected position of trimmed sequence in the read) (default: both)" << endl;
 		cout <<  "       --r no removing of empty reads (100% of bases trimmed) (default: the empty reads are removed from the output)" << endl;
@@ -274,7 +274,7 @@ int main(int argc, char **argv)
 			if(min_QC_length > 0.0 && min_QC_phred > 0)
 			{
 				cout << "removing reads with :" << endl;
-				cout << " -phred score          >=" << min_QC_phred << endl;
+				cout << " -phred score            >=" << min_QC_phred << endl;
 				cout << " -on:                    " << min_QC_length << "% of their sequences"<< endl;
 			}
 			if(min_read_size > 0)

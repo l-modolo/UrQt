@@ -149,7 +149,7 @@ void Segmentation::polyNtrimEstimate()
 			logL = log(0.0);
 			newlogL = 1.0;
 			oldlogL = 0.0;
-			while( labs(newlogL - oldlogL) > 0.001 && iter < 1000 )
+			while( labs(newlogL - oldlogL) > 0.01 && iter < 100)
 			{
 				m_log_read = 0.0;
 				m_log_polyN = 0.0;
@@ -182,7 +182,7 @@ void Segmentation::polyNtrimEstimate()
 			logL = log(0.0);
 			newlogL = 1.0;
 			oldlogL = 0.0;
-			while( labs(newlogL - oldlogL) > 0.001 && iter < 1000 )
+			while( labs(newlogL - oldlogL) > 0.01 && iter < 100 )
 			{
 				m_log_read = 0.0;
 				m_log_polyN = 0.0;
@@ -405,7 +405,7 @@ inline double Segmentation::reversePolyN(int begin, int end)
 	}
 }
 
-inline double Segmentation::baseProba(double &pG, double &pC, double &pA, double &pT)
+inline void Segmentation::baseProba(double &pG, double &pC, double &pA, double &pT)
 {
 	double G_number = 0.0;
 	double C_number = 0.0;

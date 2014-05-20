@@ -66,7 +66,7 @@ private:
 	inline double polyN(int begin, int end);
 	inline double reversePolyN(int begin, int end);
 
-	inline double baseProba(double &pG, double &pC, double &pA, double &pT);
+	inline void baseProba(double &pG, double &pC, double &pA, double &pT);
 	inline void baseProbaTotal(double &pG, double &pC, double &pA, double &pT, bool trimmed, int cut_begin, int cut_end);
 
 	inline double probaBaseDict(char base, double proba, double pG, double pC, double pA, double pT);

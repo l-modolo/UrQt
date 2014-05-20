@@ -150,6 +150,7 @@ void Read::open(char* out)
 void Read::close()
 {
 	if(m_out_open)
+	{
 		if(m_gziped)
 		{
 			m_out_gz.close();
@@ -160,6 +161,7 @@ void Read::close()
 			m_out.close();
 			m_out.clear();
 		}
+	}
 	m_out_open = false;
 }
 
@@ -221,15 +223,19 @@ void Read::writeFinal(queue<int> m_paired_pos, char* out, ez::ezRateProgressBar<
 	if(!fin.good())
 		throw logic_error("1 ERROR: while opening input tmp file");
 	fin.rdbuf()->pubsetbuf(in_buffer, BUFFER_LENGTH);
-
 	int line = 0;
 	int read_number = 0;
-	int next_read_to_skip = m_paired_pos_1.front();
-	m_paired_pos_1.pop();
+	int next_read_to_skip = 0;
+	if(!m_paired_pos_1.empty())
+	{
+		next_read_to_skip = m_paired_pos_1.front();
+		m_paired_pos_1.pop();
+	}
 	string name, seq, phred;
 	name.reserve(2048);
 	seq.reserve(2048);
 	phred.reserve(2048);
+	
 	while(!fin.eof() && fin.good())
 	{
 		// reading of read
@@ -336,7 +342,6 @@ void Read::constructor(igzstream &fin,char* N, int phred_score, int threshold, i
 	m_read_number = read_number;
 	m_log_read = log(0.0);
 	m_log_polyN = log(0.0);
-	bool new_line = true;
 	int line = 1;
 	while(!fin.eof() && fin.good() && line <= 4)
 	{
@@ -534,7 +539,6 @@ bool Read::QC_check()
 void Read::init(igzstream &fin)
 {
 	int line = 1;
-	bool new_line = true;
 	string line_tmp;
 	while( !fin.eof() && fin.good() && line <= 4)
 	{
