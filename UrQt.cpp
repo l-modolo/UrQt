@@ -55,10 +55,12 @@ int main(int argc, char **argv)
 	char* strand = nullptr;
 	char N = '?';
 	int phred_score = 1;
+	int max_head_trim = -1;
+	int max_tail_trim = -1;
 	int min_read_size = 0;
-	int min_polyN_size = 0;
 	int thread_number = 1;
 	int sampling = 0;
+	int threshold = 5;
 	bool estimation = true;
 	bool remove_empty_reads = true;
 	int paired = 0;
@@ -77,8 +79,9 @@ int main(int argc, char **argv)
 		{"outpair", required_argument, 0, 'p'},
 		{"N", required_argument, 0, 'c'},
 		{"phred", required_argument, 0, 'd'},
-		{"min_read_size", required_argument, 0, 'e'},
-		{"min_polyN_size", required_argument, 0, 'f'},
+		{"t", required_argument, 0, 'u'},
+		{"max_head_trim", required_argument, 0, 'e'},
+		{"max_tail_trim", required_argument, 0, 'f'},
 		{"m", required_argument, 0, 'g'},
 		{"v", no_argument, 0, 'h'},
 		{"s", required_argument, 0, 'i'},
@@ -91,10 +94,11 @@ int main(int argc, char **argv)
 		{"pos", required_argument, 0, 'r'},
 		{"help", no_argument, 0, 's'},
 		{"h", no_argument, 0, 't'},
+		{"min_read_size", required_argument, 0, 'v'},
 		{nullptr, 0, 0, 0}
 	};
 	
-	while ((c = getopt_long_only(argc, argv, "a:b:c:d:e:f:g:i:j:k:l:m:n:o:p:q:r:s:t", long_options, &option_index)) != -1) {
+	while ((c = getopt_long_only(argc, argv, "a:b:c:d:e:f:g:i:j:k:l:m:n:o:p:q:r:s:t:u:v", long_options, &option_index)) != -1) {
 		switch(c)
 		{
 			case 'a': in = optarg;
@@ -109,9 +113,9 @@ int main(int argc, char **argv)
 			break;
 			case 'd': phred_score = atoi(optarg);
 			break;
-			case 'e': min_read_size = atoi(optarg);
+			case 'e': max_head_trim = atoi(optarg);
 			break;
-			case 'f': min_polyN_size = atoi(optarg);
+			case 'f': max_tail_trim = atoi(optarg);
 			break;
 			case 'g': thread_number = atoi(optarg);
 			break;
@@ -137,14 +141,14 @@ int main(int argc, char **argv)
 			break;
 			case 't': help = true;
 			break;
+			case 'u': threshold = atoi(optarg);
+			break;
+			case 'v': min_read_size = atof(optarg);
+			break;
 			default : cout <<  "without argument : " << optopt << endl;
 		}
 	}
-	if (min_read_size < 0)
-		min_read_size = 0;
-	if (min_polyN_size < 0)
-		min_polyN_size = 0;
-	if ( phred_score != 1 && phred_score != 2 && phred_score != 3)
+	if (phred_score != 1 && phred_score != 2 && phred_score != 3)
 		phred_score = 1;
 	if (thread_number < 0)
 		thread_number == 1;
@@ -157,19 +161,21 @@ int main(int argc, char **argv)
 		cout <<  "       --out output fastq file" << endl;
 		cout <<  "Optional:" << endl;
 		cout <<  "       --inpair input fastq file for paired end data" << endl;
-		cout <<  "       --output output fastq file for paired end data, empty read in one file will be removed in both" << endl;
-		cout <<  "       --phred <number> [1 = Sanger (ASCII 33 to 126), 2 = Illumina 1.3 (ASCII 64 to 126), 3 = Solexa/Illumina 1.0 (ASCII 59 to 126)] (default: 1)" << endl;
+		cout <<  "       --outpair output fastq file for paired end data, empty read in one file will be removed in both" << endl;
+		cout <<  "       --phred <number> [33 = Sanger (ASCII 33 to 126), 64 = Illumina 1.3 (ASCII 64 to 126), 59 = Solexa/Illumina 1.0 (ASCII 59 to 126)] (default: 33)" << endl;
 		cout <<  "    Trimming option:" << endl;
+		cout <<  "       --t <number>  minimum phred score for a ``good quality'' (default: 5)" << endl;
 		cout <<  "       --N <character>  polyN to trim (default: QC trimming)" << endl;
-		cout <<  "       --min_read_size <number> (default: 0)" << endl;
-		cout <<  "       --min_trim_size <number> (default: 0)" << endl;
-		cout <<  "       --pos <head|tail|both> (expected position of trimmed sequence in the read)" << endl;
-		cout <<  "       --r no removing of empty reads (100% polyN) (default: the empty reads are removed from the output)" << endl;
-		cout <<  "       --min_QC_length <double> if present with --min_QC_phred the minimum percentage of base with min_QC_phred necessary to keep a read" << endl;
-		cout <<  "       --min_QC_phred <int> if present with --min_QC_length, the minimum phred score on min_QC_length percent of the base necessary to keep a read" << endl;
+		cout <<  "       --max_head_trim <number> maximum number of nucleotide trimmed at the head of the reads (default: 0)" << endl;
+		cout <<  "       --min_tail_trim <number> maximum number of nucleotide trimmed at the tail of the reads (default: 0)" << endl;
+		cout <<  "       --min_read_size <number> remove all reads smaller than this size after the trimming step (default: 0)" << endl;
+		cout <<  "       --pos <head|tail|both> (expected position of trimmed sequence in the read) (default: both)" << endl;
+		cout <<  "       --r no removing of empty reads (100% of bases trimmed) (default: the empty reads are removed from the output)" << endl;
+		cout <<  "       --min_QC_length <double> if present with --min_QC_phred the minimum percentage of base with min_QC_phred necessary to keep a read (default: without QC percentage for a length)" << endl;
+		cout <<  "       --min_QC_phred <int> if present with --min_QC_length, the minimum phred score on min_QC_length percent of the base necessary to keep a read (default: without QC percentage for a length)" << endl;
 		cout <<  "    Estimation :" << endl;
-		cout <<  "       --s <number> number of reads to sample to compute the fixe proportion of the 4 different nucleotides instead of being computed in the partitioning of each reads" << endl;
-		cout <<  "       --S if present the proportion of the 4 different nucleotides is set to 1/4 instead of being computed in the partitioning of each reads" << endl;
+		cout <<  "       --s <number> number of reads to sample to compute the fixe proportion of the 4 different nucleotides (default: proportion computed in the partitioning of each reads)" << endl;
+		cout <<  "       --S if present the proportion of the 4 different nucleotides is set to 1/4 (default: proportion computed in the partitioning of each reads)" << endl;
 		cout <<  "    Other:" << endl;
 		cout <<  "       --v verbose" << endl;
 		cout <<  "       --gz gziped output" << endl;
@@ -188,26 +194,34 @@ int main(int argc, char **argv)
 				cout << "output pair:             " << outpair << endl;
 			switch(phred_score)
 			{
-				case 1 :
+				case 33 :
 					cout << "phred score:             Sanger (ASCII 33 to 126)" << endl;
+					phred_score = 1;
 				break;
-				case 2 :
+				case 64 :
 					cout << "phred score:             Illumina 1.3 (ASCII 64 to 126)" << endl;
+					phred_score = 2;
 				break;
-				case 3 :
+				case 59 :
 					cout << "phred score:             Solexa/Illumina 1.0 (ASCII 59 to 126)" << endl;
+					phred_score = 3;
 				break;
 				default :
 					cout << "phred score:             Sanger (ASCII 33 to 126)" << endl;
 					phred_score = 1;
 			}
-			cout << "min read size:           " << min_read_size << endl;
-			cout << "min trimming size:       " << min_polyN_size << endl;
-			cout << "thread number:           " << thread_number << endl;
+			if(max_head_trim != -1)
+				cout << "max head trimming :      " << max_head_trim << " (nucleotides)" << endl;
+			if(max_tail_trim != -1)
+				cout << "max tail trimming :      " << max_tail_trim << " (nucleotides)" << endl;
+			cout << "thread number:           " << thread_number << " (threads)" << endl;
 			if(N != '?')
 				cout << "removing:                poly" << N << endl;
 			else
+			{
 				cout << "removing:                QC" << endl;
+				cout << "good quality above:      " << threshold << " (phred)" << endl;
+			}
 			if(N != '?')
 				cout << "remove ployN at:         ";
 			else
@@ -242,7 +256,7 @@ int main(int argc, char **argv)
 		if(v)
 		{
 			if(sampling > 0)
-				cout << "read to sample:          " << sampling << endl;
+				cout << "read to sample:          " << sampling << " (reads)" << endl;
 			cout << "probability estimation:  ";
 			if(estimation)
 				cout << "for each reads" << endl;
@@ -263,11 +277,13 @@ int main(int argc, char **argv)
 				cout << " -phred score          >=" << min_QC_phred << endl;
 				cout << " -on:                    " << min_QC_length << "% of their sequences"<< endl;
 			}
+			if(min_read_size > 0)
+				cout << "keep only reads with :   size > " << min_read_size << " (nucleotides)" << endl;
 			cout << "compressed output        ";
 			if(gziped)
 				cout << "gz" << endl;
 			else
-				cout << "none" << endl;
+				cout << "disable" << endl;
 		}
 	}
 	
@@ -350,7 +366,7 @@ int main(int argc, char **argv)
 			for ( int i = 0; i < number_of_lines; i++)
 			{
 				if (v && (i+1)%1000 == 0){ p.update(i);}
-				readTrim.add(new Read(fin, out_tmp, gziped, &N, phred_score, min_read_size, min_polyN_size, i, remove_empty_reads, min_QC_phred, min_QC_length, true, paired, strand_bit));
+				readTrim.add(new Read(fin, out_tmp, gziped, &N, phred_score, threshold, max_head_trim, max_tail_trim, min_read_size, i, remove_empty_reads, min_QC_phred, min_QC_length, true, paired, strand_bit));
 			}
 			if(v){ p.update(number_of_lines);}
 			readTrim.stop();
@@ -386,7 +402,7 @@ int main(int argc, char **argv)
 					{
 						if(*it == i)
 						{
-							readSample.add(new Read(fin, &N, phred_score, min_read_size, min_polyN_size, i, remove_empty_reads, min_QC_phred, min_QC_length, strand_bit));
+							readSample.add(new Read(fin, &N, phred_score, threshold, max_head_trim, max_tail_trim, min_read_size, i, remove_empty_reads, min_QC_phred, min_QC_length, strand_bit));
 							it++;
 						}
 						i++;
@@ -408,7 +424,7 @@ int main(int argc, char **argv)
 			{
 				if (v && (i+1)%1000 == 0)
 					p.update(i);
-				readTrim.add(new Read(fin, out_tmp, gziped,  &N, phred_score, min_read_size, min_polyN_size, i, remove_empty_reads, min_QC_phred, min_QC_length, paired, strand_bit));
+				readTrim.add(new Read(fin, out_tmp, gziped,  &N, phred_score, threshold, max_head_trim, max_tail_trim, min_read_size, i, remove_empty_reads, min_QC_phred, min_QC_length, paired, strand_bit));
 			}
 			if(v){ p.update(number_of_lines);}
 			readTrim.stop();

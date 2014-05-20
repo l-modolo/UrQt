@@ -48,10 +48,10 @@ class Segmentation;
 class Read
 {
 public:
-	Read(igzstream &fin, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, int strand_bit);
-	Read(igzstream &fin, char* out, bool gziped, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, int paired, int strand_bit);
-	Read(igzstream &fin, char* out, bool gziped, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, bool estimation, int paired, int strand_bit);
-	void constructor(igzstream &fin,char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, int strand_bit);
+	Read(igzstream &fin, char* N, int phred_score, int threshold, int max_head_trim, int max_tail_trim, int min_read_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, int strand_bit);
+	Read(igzstream &fin, char* out, bool gziped, char* N, int phred_score, int threshold, int max_head_trim, int max_tail_trim, int min_read_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, int paired, int strand_bit);
+	Read(igzstream &fin, char* out, bool gziped, char* N, int phred_score, int threshold, int max_head_trim, int max_tail_trim, int min_read_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, bool estimation, int paired, int strand_bit);
+	inline void constructor(igzstream &fin,char* N, int phred_score, int threshold, int max_head_trim, int max_tail_trim, int min_read_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, int strand_bit);
 	~Read();
 	Read& operator=(Read const& readbis);
 	void operator()();
@@ -67,9 +67,13 @@ public:
 	int size();
 	int start();
 	int stop();
+	int max_head_trim();
+	int max_tail_trim();
+	int min_read_size();
 	char seq(int i);
 	char phred(int i);
 	int min_QC_phred();
+	int threshold();
 	double min_QC_length();
 	static double G_probability();
 	static double C_probability();
@@ -109,8 +113,12 @@ private:
 	int m_read_number;
 	int m_start;
 	int m_stop;
+	int m_max_head_trim;
+	int m_max_tail_trim;
+	int m_min_read_size;
 	int m_min_QC_phred;
 	int m_strand;
+	int m_threshold;
 	string m_name;
 	string m_seq;
 	string m_phred;

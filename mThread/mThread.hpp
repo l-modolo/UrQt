@@ -88,8 +88,8 @@ mThread<T>::~mThread()
 template <typename T>
 void mThread<T>::run(mThreadWaiting<T>* todo, mThreadDone<T>* done)
 {
-	try
-	{
+	// try
+	// {
 		T* mThread_task = nullptr;
 		int mThread_task_number = -1;
 		bool running = true;
@@ -111,11 +111,11 @@ void mThread<T>::run(mThreadWaiting<T>* todo, mThreadDone<T>* done)
 				running = false;
 		}
 		while(running);
-	}
-	catch(exception const& e)
-	{
-		cerr << "ERROR : " << e.what() << " in : void mThreadRunning<T>::thread_run()" << endl;
-	}
+	// }
+	// catch(exception const& e)
+	// {
+	// 	cerr << "ERROR : " << e.what() << " in : void mThreadRunning<T>::thread_run()" << endl;
+	// }
 }
 
 // add a jobs to the job waiting list

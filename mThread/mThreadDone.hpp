@@ -48,13 +48,13 @@ class mThreadDone
 	string output();
 
 	protected:
-	void get(T** x);
-	void push_back(T* x, int number);
-	T* pop_front();
+	inline void get(T** x);
+	inline void push_back(T* x, int number);
+	inline T* pop_front();
 	
-	int can_add(int number);
-	int can_get();
-	int true_size();
+	inline int can_add(int number);
+	inline int can_get();
+	inline int true_size();
 	int mThreadDone_iteration;
 	int mThreadDone_iteration_done;
 	
@@ -93,23 +93,23 @@ void mThreadDone<T>::stop()
 template<typename T>
 mThreadDone<T>::mThreadDone()
 {
-	try
-	{
+	// try
+	// {
 		mThreadDone_isrun = false;
 		mThreadDone_init = false;
-	}
-	catch(exception const& e)
-	{
-		cerr << "ERROR : " << e.what() << " in : mThreadDone<T>::mThreadDone()" << endl;
-	}
+	// }
+	// catch(exception const& e)
+	// {
+	// 	cerr << "ERROR : " << e.what() << " in : mThreadDone<T>::mThreadDone()" << endl;
+	// }
 }
 
 // initialization of the waiting list
 template<typename T>
 mThreadDone<T>::mThreadDone(int size) : mThreadDone_thread( &mThreadDone<T>::run, this)
 {
-	try
-	{
+	// try
+	// {
 		unique_lock<mutex> lk(mThreadDone_onebyone);
 		mThreadDone_isrun = true;
 		mThreadDone_size = size;
@@ -121,18 +121,18 @@ mThreadDone<T>::mThreadDone(int size) : mThreadDone_thread( &mThreadDone<T>::run
 		mThreadDone_last_done = -1;
 		mThreadDone_init = true;
 		mThreadDone_initialized_cond.notify_all();
-	}
-	catch(exception const& e)
-	{
-		cerr << "ERROR : " << e.what() << " in : mThreadDone<T>::mThreadDone(int size)" << endl;
-	}
+	// }
+	// catch(exception const& e)
+	// {
+	// 	cerr << "ERROR : " << e.what() << " in : mThreadDone<T>::mThreadDone(int size)" << endl;
+	// }
 }
 
 template<typename T>
 mThreadDone<T>::~mThreadDone()
 {
-	try
-	{
+	// try
+	// {
 		unique_lock<mutex> full(mThreadDone_full);
 		if(mThreadDone_init)
 		{
@@ -142,18 +142,18 @@ mThreadDone<T>::~mThreadDone()
 				mThreadDone_thread.join();
 		}
 		mThreadDone_init = false;
-	}
-	catch(exception const& e)
-	{
-		cerr << "ERROR : " << e.what() << " in : mThreadDone<T>::~mThreadDone()" << endl;
-	}
+	// }
+	// catch(exception const& e)
+	// {
+	// 	cerr << "ERROR : " << e.what() << " in : mThreadDone<T>::~mThreadDone()" << endl;
+	// }
 }
 
 template <typename T>
 void mThreadDone<T>::run()
 {
-	try
-	{
+	// try
+	// {
 		unique_lock<mutex> initialized(mThreadDone_initialized);
 		while(!mThreadDone_init)
 				mThreadDone_initialized_cond.wait(initialized);
@@ -173,19 +173,19 @@ void mThreadDone<T>::run()
 				running = false;
 		}
 		while(running);
-	}
-	catch(exception const& e)
-	{
-		cerr << "ERROR : " << e.what() << " in : void mThreadRunning<T>::thread_run()" << endl;
-	}
+	// }
+	// catch(exception const& e)
+	// {
+	// 	cerr << "ERROR : " << e.what() << " in : void mThreadRunning<T>::thread_run()" << endl;
+	// }
 }
 
 // we add jobs at the waiting list
 template<typename T>
 void mThreadDone<T>::add(T* x, int n)
 {
-	try
-	{
+	// try
+	// {
 		if(mThreadDone_init)
 		{
 			unique_lock<mutex> full(mThreadDone_full);
@@ -195,20 +195,20 @@ void mThreadDone<T>::add(T* x, int n)
 		}
 		else
 			throw logic_error("Done list not initialized");
-	}
-	catch(exception const& e)
-	{
-		cerr << "ERROR : " << e.what() << " in : void mThreadDone<T>::add(T const & x)" << endl;
-		exit(-1);
-	}
+	// }
+	// catch(exception const& e)
+	// {
+	// 	cerr << "ERROR : " << e.what() << " in : void mThreadDone<T>::add(T const & x)" << endl;
+	// 	exit(-1);
+	// }
 }
 
 // we load the next jobs
 template<typename T>
-void mThreadDone<T>::get(T** x)
+inline void mThreadDone<T>::get(T** x)
 {
-	try
-	{
+	// try
+	// {
 		if(mThreadDone_init)
 		{
 			unique_lock<mutex> empty(mThreadDone_empty);
@@ -218,17 +218,17 @@ void mThreadDone<T>::get(T** x)
 		}
 		else
 			throw logic_error("Done list not initialized");
-	}
-	catch(exception const& e)
-	{
-		cerr << "ERROR : " << e.what() << " in : T mThreadDone<T>::get()" << endl;
-		exit(-1);
-	}
+	// }
+	// catch(exception const& e)
+	// {
+	// 	cerr << "ERROR : " << e.what() << " in : T mThreadDone<T>::get()" << endl;
+	// 	exit(-1);
+	// }
 }
 
 // adding a job to the list
 template<typename T>
-void mThreadDone<T>::push_back(T* x, int number)
+inline void mThreadDone<T>::push_back(T* x, int number)
 {
 	unique_lock<mutex> lk(mThreadDone_onebyone); // we add one job at the time
 	mThreadDone_loop.add(x, number);
@@ -237,10 +237,10 @@ void mThreadDone<T>::push_back(T* x, int number)
 
 // getting a job from the list
 template<typename T>
-T* mThreadDone<T>::pop_front()
+inline T* mThreadDone<T>::pop_front()
 {
-	try
-	{
+	// try
+	// {
 		unique_lock<mutex> lk(mThreadDone_onebyone); // we get one job at the time
 		T* value = nullptr;
 		value = mThreadDone_loop.pop();
@@ -252,51 +252,51 @@ T* mThreadDone<T>::pop_front()
 		else // else we allow only one thread to continue
 			mThreadDone_full_cond.notify_one();
 		return value;
-	}
-	catch(exception const& e)
-	{
-		cerr << "ERROR : " << e.what() << " in : T mThreadDone<T>::pop_front()" << endl;
-		exit(-1);
-	}
+	// }
+	// catch(exception const& e)
+	// {
+	// 	cerr << "ERROR : " << e.what() << " in : T mThreadDone<T>::pop_front()" << endl;
+	// 	exit(-1);
+	// }
 }
 
 template<typename T>
-int mThreadDone<T>::can_add(int number)
+inline int mThreadDone<T>::can_add(int number)
 {
-	try
-	{
+	// try
+	// {
 		unique_lock<mutex> lk(mThreadDone_onebyone);
 		if(mThreadDone_isrun) // if we didn't get the stop signal we proceed
 			return mThreadDone_loop.can_add(number);
 		else // if we got the stop signal we can finish every thing even if the list is full
 			throw logic_error("try to add task after the stop signal");
-	}
-	catch(exception const& e)
-	{
-		cerr << "ERROR : " << e.what() << " in : int mThreadDone<T>::can_add(int number)" << endl;
-		exit(-1);
-	}
+	// }
+	// catch(exception const& e)
+	// {
+	// 	cerr << "ERROR : " << e.what() << " in : int mThreadDone<T>::can_add(int number)" << endl;
+	// 	exit(-1);
+	// }
 }
 
 template<typename T>
-int mThreadDone<T>::can_get()
+inline int mThreadDone<T>::can_get()
 {
-	try
-	{
+	// try
+	// {
 		unique_lock<mutex> lk(mThreadDone_onebyone);
 		if(mThreadDone_isrun)
 			return mThreadDone_loop.can_get();
 		return true;
-	}
-	catch(exception const& e)
-	{
-		cerr << "ERROR : " << e.what() << " in : int mThreadDone<T>::can_get()" << endl;
-		exit(-1);
-	}
+	// }
+	// catch(exception const& e)
+	// {
+	// 	cerr << "ERROR : " << e.what() << " in : int mThreadDone<T>::can_get()" << endl;
+	// 	exit(-1);
+	// }
 }
 
 template<typename T>
-int mThreadDone<T>::true_size()
+inline int mThreadDone<T>::true_size()
 {
 	unique_lock<mutex> lk(mThreadDone_onebyone);
 	return mThreadDone_loop.size();

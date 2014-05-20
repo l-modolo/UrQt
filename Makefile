@@ -1,5 +1,5 @@
 CC=g++
-CFLAGS=-lz -std=c++0x -pthread -I/usr/local/include -L/usr/local/lib -g -DEBUG -pg -Werror
+CFLAGS=-lz -std=c++0x -pthread -I/usr/local/include -L/usr/local/lib #-g -DEBUG -pg -Werror
 
 all:gzstream.o Read.o Segmentation.o UrQt.cpp
 	$(CC) $(CFLAGS) gzstream.o Read.o Segmentation.o UrQt.cpp -o UrQt
@@ -14,4 +14,4 @@ gzstream.o:
 	$(CC) $(CFLAGS) -c gzstream.cpp
 
 clean:
-	rm -f *.o polyAtrimmer
+	rm -f *.o UrQt

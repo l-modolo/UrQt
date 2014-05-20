@@ -47,13 +47,13 @@ class mThreadWaiting
 	
 	protected:
 	
-	void push_back(T* x);
-	T* pop_front(int* number);
+	inline void push_back(T* x);
+	inline T* pop_front(int* number);
 	
-	int can_add(int number);
-	int can_get();
+	inline int can_add(int number);
+	inline int can_get();
 	// int size();
-	int true_size();
+	inline int true_size();
 	int mThreadWaiting_iteration;
 	
 	// communication between the thread
@@ -85,8 +85,8 @@ void mThreadWaiting<T>::stop()
 template<typename T>
 mThreadWaiting<T>::mThreadWaiting(int size)
 {
-	try
-	{
+	// try
+	// {
 		mThreadWaiting_isrun = true;
 		mThreadWaiting_size = size;
 		mThreadWaiting_pos_front = -1;
@@ -94,11 +94,11 @@ mThreadWaiting<T>::mThreadWaiting(int size)
 		// mThreadWaiting_waiting.clear();
 		mThreadWaiting_loop.init(size);
 		mThreadWaiting_iteration = -1;
-	}
-	catch(exception const& e)
-	{
-		cerr << "ERROR : " << e.what() << " in : mThreadWaiting<T>::mThreadWaiting(int size)" << endl;
-	}
+	// }
+	// catch(exception const& e)
+	// {
+	// 	cerr << "ERROR : " << e.what() << " in : mThreadWaiting<T>::mThreadWaiting(int size)" << endl;
+	// }
 }
 
 template<typename T>
@@ -113,41 +113,41 @@ mThreadWaiting<T>::~mThreadWaiting()
 template<typename T>
 void mThreadWaiting<T>::add(T* x)
 {
-	try
-	{
+	// try
+	// {
 		unique_lock<mutex> full(mThreadWaiting_full);
 		while(!can_add(mThreadWaiting_iteration+1))
 			mThreadWaiting_full_cond.wait(full); // if the list is full we wait
 		push_back(x); // when there is room we add the job
-	}
-	catch(exception const& e)
-	{
-		cerr << "ERROR : " << e.what() << " in : void mThreadWaiting<T>::add(T const & x)" << endl;
-		exit(-1);
-	}
+	// }
+	// catch(exception const& e)
+	// {
+	// 	cerr << "ERROR : " << e.what() << " in : void mThreadWaiting<T>::add(T const & x)" << endl;
+	// 	exit(-1);
+	// }
 }
 
 // we load the next jobs
 template<typename T>
 void mThreadWaiting<T>::get(T** x, int* number)
 {
-	try
-	{
+	// try
+	// {
 		unique_lock<mutex> empty(mThreadWaiting_empty);
 		while(!can_get())
 			mThreadWaiting_empty_cond.wait(empty); // if the list in empty we wait
 		*x = pop_front(number); // when there is a job we get it
-	}
-	catch(exception const& e)
-	{
-		cerr << "ERROR : " << e.what() << " in : T mThreadWaiting<T>::get()" << endl;
-		exit(-1);
-	}
+	// }
+	// catch(exception const& e)
+	// {
+	// 	cerr << "ERROR : " << e.what() << " in : T mThreadWaiting<T>::get()" << endl;
+	// 	exit(-1);
+	// }
 }
 
 // adding a job to the list
 template<typename T>
-void mThreadWaiting<T>::push_back(T* x)
+inline void mThreadWaiting<T>::push_back(T* x)
 {
 	unique_lock<mutex> lk(mThreadWaiting_onebyone); // we add one job at the time
 	mThreadWaiting_iteration++;
@@ -157,10 +157,10 @@ void mThreadWaiting<T>::push_back(T* x)
 
 // getting a job from the list
 template<typename T>
-T* mThreadWaiting<T>::pop_front(int* number)
+inline T* mThreadWaiting<T>::pop_front(int* number)
 {
-	try
-	{
+	// try
+	// {
 		unique_lock<mutex> lk(mThreadWaiting_onebyone); // we get one job at the time
 		T* value = nullptr;
 
@@ -171,51 +171,51 @@ T* mThreadWaiting<T>::pop_front(int* number)
 		else // else we allow only one thread to continue
 			mThreadWaiting_full_cond.notify_one();
 		return value;
-	}
-	catch(exception const& e)
-	{
-		cerr << "ERROR : " << e.what() << " in : T mThreadWaiting<T>::pop_front()" << endl;
-		exit(-1);
-	}
+	// }
+	// catch(exception const& e)
+	// {
+	// 	cerr << "ERROR : " << e.what() << " in : T mThreadWaiting<T>::pop_front()" << endl;
+	// 	exit(-1);
+	// }
 }
 
 template<typename T>
-int mThreadWaiting<T>::can_add(int number)
+inline int mThreadWaiting<T>::can_add(int number)
 {
-	try
-	{
+	// try
+	// {
 		unique_lock<mutex> lk(mThreadWaiting_onebyone);
 		if(mThreadWaiting_isrun) // if we didn't get the stop signal we proceed
 			return mThreadWaiting_loop.can_add(number);
 		else // if we got the stop signal we can finish every thing even if the list is full
 			throw logic_error("try to add task after the stop signal");
-	}
-	catch(exception const& e)
-	{
-		cerr << "ERROR : " << e.what() << " in : int mThreadWaiting<T>::can_add(int number)" << endl;
-		exit(-1);
-	}
+	// }
+	// catch(exception const& e)
+	// {
+	// 	cerr << "ERROR : " << e.what() << " in : int mThreadWaiting<T>::can_add(int number)" << endl;
+	// 	exit(-1);
+	// }
 }
 
 template<typename T>
-int mThreadWaiting<T>::can_get()
+inline int mThreadWaiting<T>::can_get()
 {
-	try
-	{
+	// try
+	// {
 		unique_lock<mutex> lk(mThreadWaiting_onebyone);
 		if(mThreadWaiting_isrun)
 			return mThreadWaiting_loop.can_get();
 		return true;
-	}
-	catch(exception const& e)
-	{
-		cerr << "ERROR : " << e.what() << " in : int mThreadWaiting<T>::can_get()" << endl;
-		exit(-1);
-	}
+	// }
+	// catch(exception const& e)
+	// {
+	// 	cerr << "ERROR : " << e.what() << " in : int mThreadWaiting<T>::can_get()" << endl;
+	// 	exit(-1);
+	// }
 }
 
 template<typename T>
-int mThreadWaiting<T>::true_size()
+inline int mThreadWaiting<T>::true_size()
 {
 	unique_lock<mutex> lk(mThreadWaiting_onebyone);
 	return mThreadWaiting_loop.size();

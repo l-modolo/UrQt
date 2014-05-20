@@ -55,25 +55,28 @@ private:
 	
 	// in a read the probability of observing one of the four bases is roughly the same
 	// for each base we use the probability of being the right base
-	double read(int begin, int end);
-	double readEstimate(int begin, int end, double p_G, double p_C, double p_A, double p_T);
-	double reverseRead(int begin, int end);
-	double reverseReadEstimate(int begin, int end, double p_G, double p_C, double p_A, double p_T);
+	inline double read(int begin, int end);
+	inline double read(int begin, int end, double p_G, double p_C, double p_A, double p_T);
+	inline double reverseRead(int begin, int end);
+	inline double reverseRead(int begin, int end, double p_G, double p_C, double p_A, double p_T);
 
 	// in a polyN segment of size n we expect to observe N with with a probability 1/n
 	// for each N we use the probability of being the right base
 	// for each non-N we use 1 - the probability of being the right base
-	double polyN(int begin, int end);
-	double reversePolyN(int begin, int end);
+	inline double polyN(int begin, int end);
+	inline double reversePolyN(int begin, int end);
 
-	double baseProba(double &pG, double &pC, double &pA, double &pT);
-	void baseProbaTotal(double &pG, double &pC, double &pA, double &pT, bool trimmed, int cut_begin, int cut_end);
+	inline double baseProba(double &pG, double &pC, double &pA, double &pT);
+	inline void baseProbaTotal(double &pG, double &pC, double &pA, double &pT, bool trimmed, int cut_begin, int cut_end);
 
-	double probaBaseDict(char base, double proba, double pG, double pC, double pA, double pT);
-	void numberBaseDict(char base, double proba, double &G_number, double &C_number, double &A_number, double &T_number);
+	inline double probaBaseDict(char base, double proba, double pG, double pC, double pA, double pT);
+	inline void numberBaseDict(char base, double proba, double &G_number, double &C_number, double &A_number, double &T_number);
 
 	// perform a quality check in the read, if it was constructed with the correct argument 
 	bool QC_check();
+
+	// perform a size check in the read
+	bool size_check();
 
 };
 
