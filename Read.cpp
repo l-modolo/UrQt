@@ -412,7 +412,6 @@ void Read::constructor(igzstream &fin,char* N, int phred_score, int min_read_siz
 		m_cut_begin = 0;
 		m_cut_end = 0;
 		m_read_number = read_number;
-		m_proba = nullptr;
 		m_log_read = log(0.0);
 		m_log_polyN = log(0.0);
 		int line = 1;
@@ -493,7 +492,6 @@ Read& Read::operator=(Read const& readbis)
 			m_name = readbis.m_name;
 			m_seq = readbis.m_seq;
 			m_phred = readbis.m_phred;
-			m_proba = nullptr;
 			m_log_read = readbis.m_log_read;
 			m_log_polyN = readbis.m_log_polyN;
 			m_N = readbis.m_N;
@@ -520,9 +518,9 @@ void Read::run()
 		if(m_init)
 		{
 			if(m_sampled || m_estimation)
-				polyNtrimEstimate();
+				Segmentation work(this, true);
 			else
-				polyNtrim();
+				Segmentation work(this, true);
 		}
 	}
 	catch(exception const& e)
@@ -539,12 +537,12 @@ void Read::done()
 		if(m_init)
 		{
 			if(m_sampled && !m_estimation)
-				baseProbaTotal();
+				Segmentation work(this, m_G_probability, m_C_probability, m_A_probability, m_T_probability, m_trimmed, m_cut_begin, m_cut_end);
 			if(!m_sampled && !m_estimation)
 				writeRead();
 			if(m_estimation)
 			{
-				baseProbaTotal();
+				Segmentation work(this, m_G_probability, m_C_probability, m_A_probability, m_T_probability, m_trimmed, m_cut_begin, m_cut_end);
 				writeRead();
 			}
 		}
@@ -554,6 +552,69 @@ void Read::done()
 		cerr << "ERROR : " << e.what() << " in : void Read::done()" << endl;
 		exit(-1);
 	}
+}
+
+char Read::base()
+{
+	return m_N;
+}
+int Read::size()
+{
+	return m_size;
+}
+int Read::start()
+{
+	return m_start;
+}
+int Read::stop()
+{
+	return m_stop;
+}
+char Read::seq(int i)
+{
+	return m_seq.at(i);
+}
+char Read::phred(int i)
+{
+	return m_phred.at(i) - m_phred_score;
+}
+int Read::min_QC_phred()
+{
+	return m_min_QC_phred;
+}
+double Read::min_QC_length()
+{
+	return m_min_QC_length;
+}
+double Read::G_probability()
+{
+	return m_G_probability;
+}
+double Read::C_probability()
+{
+	return m_C_probability;
+}
+double Read::A_probability()
+{
+	return m_A_probability;
+}
+double Read::T_probability()
+{
+	return m_T_probability;
+}
+int Read::strand()
+{
+	return m_strand;
+}
+void Read::set_trim(bool trim, int cut_begin, int cut_end)
+{
+	m_trimmed = trim;
+	m_cut_begin = cut_begin;
+	m_cut_end = cut_end;
+}
+bool Read::QC_check()
+{
+	return m_QC_check;
 }
 
 void Read::init(igzstream &fin)
@@ -588,450 +649,6 @@ void Read::init(igzstream &fin)
 	catch(exception const& e)
 	{
 		cerr << "ERROR : " << e.what() << " in : void Read::init(igzstream &fin)" << endl;
-		exit(-1);
-	}
-}
-
-void Read::polyNtrim()
-{
-	try
-	{
-		if(m_init)
-		{
-			phred();
-			
-			// we find the maximum likelihood cut point between a read segment and a poly N segment
-			double logL = log(0.0);
-			double newlogL = 0.0;
-			// if i = 0 we have a polyN read, if i = m_size we have a read without polyN
-			if(m_strand == 0 || m_strand == 2) // we find the cut point for a poly N tail
-			{
-				for(int i = m_start; i <= m_stop; i++) // the last possible cut point is outside the read
-				{
-					newlogL = read(m_start, i) + polyN(i, m_stop);
-					if(newlogL > logL)
-					{
-						logL = newlogL;
-						m_cut_end = i;
-					}
-				}
-			}
-			if(m_strand == 1 || m_strand == 2) // we find the cut point for a poly N head
-			{
-				for(int i = m_start; i <= m_stop; i++) // the last possible cut point is outside the read
-				{
-					newlogL = reversePolyN(m_start, i) + reverseRead(i, m_stop);
-					if(newlogL > logL)
-					{
-						logL = newlogL;
-						m_cut_begin = i;
-					}
-				}
-			}
-			delete[] m_proba;
-			if(QC_check()) // if the read pass the quality check
-				m_trimmed = true;
-			else
-				m_trimmed = false;
-		}
-	}
-	catch(exception const& e)
-	{
-		cerr << "ERROR : " << e.what() << " in : void Read::polyNtrim()" << endl;
-		exit(-1);
-	}
-}
-
-void Read::polyNtrimEstimate()
-{
-	try
-	{
-		if(m_init)
-		{
-			phred();
-			
-			double pG = 0.25;
-			double pC = 0.25;
-			double pA = 0.25;
-			double pT = 0.25;
-			double old_pG, old_pC, old_pA, old_pT;
-			int iter = 0;
-
-			// we find the maximum likelihood cut point between a read segment and a polyN segment 
-			double logL = log(0.0);
-			m_log_read = log(0.0);
-			m_log_polyN = log(0.0);
-			double newlogL = 1.0;
-			double oldlogL = 0.0;
-
-			if(m_strand == 0 || m_strand == 2) // we find the cut point for a poly N tail
-			{
-				while( labs(newlogL - oldlogL) > 0.01 && iter < 100 )
-				{
-					oldlogL = newlogL;
-					logL = log(0.0);
-					// if i = 0 we have a polyN read, if i = m_size we have a read without polyN
-					for(int i = m_start; i <= m_stop; i++) // the last possible cut point is outside the read
-					{
-						newlogL = readEstimate(m_start, i, pG, pC, pA, pT) + polyN(i, m_stop);
-						if(newlogL > logL)
-						{
-							logL = newlogL;
-							m_cut_end = i;
-						}
-					}
-					newlogL = logL;
-					old_pG = pG;
-					old_pC = pC;
-					old_pA = pA;
-					old_pT = pT;
-					baseProba(pG, pC, pA, pT);
-					iter++;
-				}
-			}
-			if( m_cut_end == 0)
-				m_cut_end = m_size;
-			
-			if(m_strand == 1 || m_strand == 2) // we find the cut point for a poly N head
-			{
-				iter = 0;
-				logL = log(0.0);
-				m_log_read = log(0.0);
-				m_log_polyN = log(0.0);
-				newlogL = 1.0;
-				oldlogL = 0.0;
-				while( labs(newlogL - oldlogL) > 0.01 && iter < 100 )
-				{
-					oldlogL = newlogL;
-					logL = log(0.0);
-					// if i = 0 we have a polyN read, if i = m_size we have a read without polyN
-					for(int i = m_start; i <= m_cut_end; i++) // the last possible cut point is outside the read
-					{
-						newlogL = reversePolyN(m_start, i) + reverseReadEstimate(i, m_stop, pG, pC, pA, pT);
-						if(newlogL > logL)
-						{
-							logL = newlogL;
-							m_cut_begin = i;
-						}
-					}
-					newlogL = logL;
-					old_pG = pG;
-					old_pC = pC;
-					old_pA = pA;
-					old_pT = pT;
-					baseProba(pG, pC, pA, pT);
-					iter++;
-				}
-			}
-			switch(m_N)
-			{
-				case 'G':
-					if(pG >= 0.99) m_cut_end = m_cut_begin;
-				break;
-				case 'C':
-					if(pC >= 0.99) m_cut_end = m_cut_begin;
-				break;
-				case 'A':
-					if(pA >= 0.99) m_cut_end = m_cut_begin;
-				break;
-				case 'T':
-					if(pT >= 0.99) m_cut_end = m_cut_begin;
-				break;
-			}
-			if(m_cut_end != m_cut_begin)
-			{
-				if(m_cut_end < m_size) // we keep the last A
-					m_cut_end++;
-				if(m_cut_begin > 0) // we keep the first A
-					m_cut_begin--;
-			}
-			delete[] m_proba;
-			if(QC_check()) // if the read pass the quality check
-				m_trimmed = true;
-			else
-				m_trimmed = false;
-		}
-	}
-	catch(exception const& e)
-	{
-		cerr << "ERROR : " << e.what() << " in : void Read::polyNtrim()" << endl;
-		exit(-1);
-	}
-}
-
-double Read::read(int begin, int end)
-{
-	try
-	{
-		double logL = 0.0;
-		if(begin < end)
-		{
-			if(end == m_start) // if this is the first iteration we have to compute the full logL
-			{
-				logL = (end - begin ) * log(1.0 / (end - begin));
-				for (int i= begin; i < end; i++)
-				{
-					logL += probaBaseDict(m_seq.at(i), m_proba[i], m_G_probability, m_C_probability, m_A_probability, m_T_probability) ;
-				}
-			}
-			else // else we only have to add the new base
-			{
-				if(end != m_start+1)
-					logL = m_log_read - (end - begin -1) * log(1.0 / (end - begin - 1)); // we remove the old uniform probability
-				logL += (end - begin) * log(1.0 / (end - begin)); // we add the new uniform probability
-				logL += probaBaseDict(m_seq.at(end-1), m_proba[end-1], m_G_probability, m_C_probability, m_A_probability, m_T_probability); // we add the new base probability
-			}
-		}
-		m_log_read = logL; // we record the new logL
-		return logL;
-	}
-	catch(exception const& e)
-	{
-		cerr << "ERROR : " << e.what() << " in : double Read::read(int begin, int end)" << endl;
-		exit(-1);
-	}
-}
-
-double Read::readEstimate(int begin, int end, double pG, double pC, double pA, double pT)
-{
-	try
-	{
-		double logL = 0.0;
-		if(begin < end)
-		{
-			if(end == m_start) // if this is the first iteration we have to compute the full logL
-			{
-				logL = (end - begin ) * log(1.0 / (end - begin));
-				for (int i= begin; i < end; i++)
-				{
-					logL += probaBaseDict(m_seq.at(i), m_proba[i], pG, pC, pA, pT);
-				}
-			}
-			else // else we only have to add the new base
-			{
-				if(end != m_start+1)
-					logL = m_log_read - (end - begin -1) * log(1.0 / (end - begin -1)); // we remove the old uniform probability
-				logL += (end - begin) * log(1.0 / (end - begin)); // we add the new uniform probability
-				logL += probaBaseDict(m_seq.at(end-1), m_proba[end-1], pG, pC, pA, pT); // we add the new base probability
-			}
-		}
-		m_log_read = logL; // we record the new logL
-		return logL;
-	}
-	catch(exception const& e)
-	{
-		cerr << "ERROR : " << e.what() << " in : double Read::readEstimate(int begin, int end, double pG, double pC, double pA, double pT)" << endl;
-		exit(-1);
-	}
-}
-
-double Read::polyN(int begin, int end)
-{
-	try
-	{
-		if(begin >= end)
-			return 0.0;
-		double logL = 0.0;
-		if(begin < end)
-		{
-			if(begin == m_start) // if this is the first iteration we have to compute the full logL
-			{
-				double unifN = log(1.0 / (end - begin));
-				double unif = log(1.0 / (end - begin)) + log(1.0/4.0);
-				for (int i= begin; i < end; i++)
-				{
-					if ((char)toupper(m_seq.at(i)) == m_N)
-						logL += unifN + log(m_proba[i]);
-					else
-						logL += unif + log(1-m_proba[i]);
-				}
-			}
-			else
-			{
-				logL = m_log_polyN - (end - begin +1) * log(1.0 / (end - begin +1)); // we remove the old uniform probability
-				logL += (end - begin) * log(1.0 / (end - begin)); // we add the new uniform probability
-				if ((char)toupper(m_seq.at(begin-1)) == m_N) // we remove the old first base
-					logL -= log(m_proba[begin-1]);
-				else
-					logL -= log(1.0/4.0) + log(1-m_proba[begin-1]);
-			}
-		}
-		m_log_polyN = logL;
-		return logL;
-	}
-	catch(exception const& e)
-	{
-		cerr << "ERROR : " << e.what() << " in : double Read::polyN(int begin, int end)" << endl;
-		exit(-1);
-	}
-}
-
-double Read::reverseRead(int begin, int end)
-{
-	try
-	{
-		if(begin >= end)
-			return 0.0;
-		double logL = 0.0;
-		if(begin < end)
-		{
-			if(begin == m_start) // if this is the first iteration we have to compute the full logL
-			{
-				logL = (end - begin ) * log(1.0 / (end - begin));
-				for (int i= begin; i < end; i++)
-				{
-					logL += probaBaseDict(m_seq.at(i), m_proba[i], m_G_probability, m_C_probability, m_A_probability, m_T_probability) ;
-				}
-			}
-			else // else we only have to add the new base
-			{
-				logL = m_log_read - (end - begin +1) * log(1.0 / (end - begin +1));  // we remove the old uniform probability
-				logL += (end - begin) * log(1.0 / (end - begin)); // we add the new uniform probability
-				logL -= probaBaseDict(m_seq.at(begin-1), m_proba[begin-1], m_G_probability, m_C_probability, m_A_probability, m_T_probability); // we remove the old first base probability
-			}
-		}
-		m_log_read = logL; // we record the new logL
-		return logL;
-	}
-	catch(exception const& e)
-	{
-		cerr << "ERROR : " << e.what() << " in : double Read::reverseRead(int begin, int end)" << endl;
-		exit(-1);
-	}
-}
-
-double Read::reverseReadEstimate(int begin, int end, double pG, double pC, double pA, double pT)
-{
-	try
-	{
-		if(begin >= end)
-			return 0.0;
-		double logL = 0.0;
-		if(begin < end)
-		{
-			if(begin == m_start) // if this is the first iteration we have to compute the full logL
-			{
-				logL = (end - begin ) * log(1.0 / (end - begin));
-				for (int i= begin; i < end; i++)
-				{
-					logL += probaBaseDict(m_seq.at(i), m_proba[i], pG, pC, pA, pT);
-				}
-			}
-			else // else we only have to add the new base
-			{
-				logL = m_log_read - (end - begin +1) * log(1.0 / (end - begin +1)); // we remove the old uniform probability
-				logL += (end - begin) * log(1.0 / (end - begin)); // we add the new uniform probability
-				logL -= probaBaseDict(m_seq.at(begin-1), m_proba[begin-1], pG, pC, pA, pT); // we remove the old first base probability
-			}
-		}
-		m_log_read = logL; // we record the new logL
-		return logL;
-	}
-	catch(exception const& e)
-	{
-		cerr << "ERROR : " << e.what() << " in : double Read::reverseReadEstimate(int begin, int end, double pG, double pC, double pA, double pT)" << endl;
-		exit(-1);
-	}
-}
-
-double Read::reversePolyN(int begin, int end)
-{
-	try
-	{
-		if(begin >= end)
-			return 0.0;
-		double logL = 0.0;
-		if(begin < end)
-		{
-			if(end == m_start) // if this is the first iteration we have to compute the full logL
-			{
-				double unifN = log(1.0 / (end - begin));
-				double unif = log(1.0 / (end - begin)) + log(1.0/4.0);
-				for (int i= begin; i < end; i++)
-				{
-					if ((char)toupper(m_seq.at(i)) == m_N)
-						logL += unifN + log(m_proba[i]);
-					else
-						logL += unif + log(1-m_proba[i]);
-				}
-			}
-			else
-			{
-				if(end != m_start+1)
-					logL = m_log_polyN - (end - begin -1) * log(1.0 / (end - begin -1)); // we remove the old uniform probability
-				logL += (end - begin) * log(1.0 / (end - begin)); // we add the new uniform probability
-				if ((char)toupper(m_seq.at(end-1)) == m_N) // we add the old first base
-					logL += log(m_proba[end-1]);
-				else
-					logL += log(1.0/4.0) + log(1-m_proba[end-1]);
-			}
-		}
-		m_log_polyN = logL;
-		return logL;
-	}
-	catch(exception const& e)
-	{
-		cerr << "ERROR : " << e.what() << " in : double Read::reversePolyN(int begin, int end)" << endl;
-		exit(-1);
-	}
-}
-
-
-double Read::baseProba(double &pG, double &pC, double &pA, double &pT)
-{
-	try
-	{
-		if(m_cut_end > 0)
-		{
-			double G_number = 0.0;
-			double C_number = 0.0;
-			double A_number = 0.0;
-			double T_number = 0.0;
-			for (int i = m_cut_begin; i < m_cut_end; i++)
-			{
-				numberBaseDict(m_seq.at(i), m_proba[i], G_number, C_number, A_number, T_number);
-			}
-			pG = G_number / (G_number + C_number + A_number + T_number);
-			pC = C_number / (G_number + C_number + A_number + T_number);
-			pA = A_number / (G_number + C_number + A_number + T_number);
-			pT = T_number / (G_number + C_number + A_number + T_number);
-		}
-	}
-	catch(exception const& e)
-	{
-		cerr << "ERROR : " << e.what() << " in : double Read::baseProba(double &pG, double &pC, double &pA, double &pT)" << endl;
-		exit(-1);
-	}
-}
-
-void Read::baseProbaTotal()
-{
-	try
-	{
-		if(m_trimmed)
-		{
-			if(m_cut_end > 0)
-			{
-				double G_number = 0.0;
-				double C_number = 0.0;
-				double A_number = 0.0;
-				double T_number = 0.0;
-				phred();
-				for (int i = m_cut_begin; i < m_cut_end; i++)
-				{
-					numberBaseDict(m_seq.at(i), m_proba[i], G_number, C_number, A_number, T_number);
-				}
-				m_G_number += G_number;
-				m_C_number += C_number;
-				m_A_number += A_number;
-				m_T_number += T_number;
-				delete[] m_proba;
-			}
-		}
-	}
-	catch(exception const& e)
-	{
-		cerr << "ERROR : " << e.what() << " in : double Read::baseProbaTotal(double &pG, double &pC, double &pA, double &pT)" << endl;
 		exit(-1);
 	}
 }
@@ -1112,201 +729,4 @@ void Read::writeRead(ostream &stream)
 int Read::writeSize()
 {
 	return 1 + m_name.size() + 1 + m_size + 3 + m_size + 1;
-}
-
-void Read::phred()
-{
-	try
-	{
-		m_proba = new double[m_size];
-		for (int i = 0; i < m_size; i++)
-		{
-			m_proba[i] = 1.0 - pow(10.0,- ( (double)(m_phred[i] - m_phred_score) )/10.0);
-		}
-	}
-	catch(exception const& e)
-	{
-		cerr << "ERROR : " << e.what() << " in : void Read::phred(int phred_score)" << endl;
-		exit(-1);
-	}
-}
-
-double Read::probaBaseDict(char base, double proba, double pG, double pC, double pA, double pT)
-{
-	double logL = 0.0;
-	switch((char)toupper(base))
-	{
-		case 'G' : logL += log(proba) + log(pG);
-		break;
-		case 'C' : logL += log(proba) + log(pC);
-		break;
-		case 'A' : logL += log(proba) + log(pA);
-		break;
-		case 'T' : logL += log(proba) + log(pT);
-		break;
-		case 'U' : logL += log(proba) + log(pT);
-		break;
-		case 'R' : logL += log(proba) + log( (pA + pG)/2.0 ); // A or G 	puRine
-		break;
-		case 'Y' : logL += log(proba) + log( (pC + pT)/2.0 ); // C, T or U 	pYrimidines
-		break;
-		case 'K' : logL += log(proba) + log( (pG + pT)/2.0 ); // G, T or U 	bases which are Ketones
-		break;
-		case 'M' : logL += log(proba) + log( (pA + pC)/2.0 ); // A or C 	bases with aMino groups
-		break;
-		case 'S' : logL += log(proba) + log( (pC + pG)/2.0 ); // C or G 	Strong interaction
-		break;
-		case 'W' : logL += log(proba) + log( (pA + pT)/2.0 ); // A, T or U 	Weak interaction
-		break;
-		case 'B' : logL += log(proba) + log( 1.0 - pA ); // not A (i.e. C, G, T or U) 	B comes after A
-		break;
-		case 'D' : logL += log(proba) + log( 1.0 - pC ); // not C (i.e. A, G, T or U) 	D comes after C
-		break;
-		case 'H' : logL += log(proba) + log( 1.0 - pG ); // not G (i.e., A, C, T or U) 	H comes after G
-		break;
-		case 'V' : logL += log(proba) + log( 1.0 - pT ); // neither T nor U (i.e. A, C or G) 	V comes after U
-		break;
-		case 'N' : logL += log(proba) + log(1.0/4.0); // A C G T U 	aNy
-		break;
-		case 'X' : logL -= log(proba) + log(1.0/4.0); // masked
-		break;
-		case '-' : logL -= log(proba) + log(1.0/4.0); // gap of indeterminate length
-		break;
-		default:
-			logL += log(1.0/4.0) + log(proba);
-	}
-	return logL;
-}
-
-void Read::numberBaseDict(char base, double proba, double &G_number, double &C_number, double &A_number, double &T_number)
-{
-	switch((char)toupper(base))
-	{
-		case 'G' : 
-			G_number += proba;
-			C_number += (1-proba)/3.0;
-			A_number += (1-proba)/3.0;
-			T_number += (1-proba)/3.0;
-		break;
-		case 'C' : 
-			C_number += proba;
-			G_number += (1-proba)/3.0;
-			A_number += (1-proba)/3.0;
-			T_number += (1-proba)/3.0;
-		break;
-		case 'A' : 
-			A_number += proba;
-			G_number += (1-proba)/3.0;
-			C_number += (1-proba)/3.0;
-			T_number += (1-proba)/3.0;
-		break;
-		case 'T' : 
-			T_number += proba;
-			G_number += (1-proba)/3.0;
-			C_number += (1-proba)/3.0;
-			A_number += (1-proba)/3.0;
-		break;
-		case 'R' :  // A or G 	puRine
-			G_number += proba/2.0;
-			C_number += (1-proba)/2.0;
-			A_number += proba/2.0;
-			T_number += (1-proba)/2.0;
-		break;
-		case 'Y' : // C, T or U 	pYrimidines
-			G_number += (1-proba)/2.0;
-			C_number += proba/2.0;
-			A_number += (1-proba)/2.0;
-			T_number += proba/2.0;
-		break;
-		case 'K' : // G, T or U 	bases which are Ketones
-			G_number += proba/2.0;
-			C_number += (1-proba)/2.0;
-			A_number += (1-proba)/2.0;
-			T_number += proba/2.0;
-		break;
-		case 'M' : // A or C 	bases with aMino groups
-			G_number += (1-proba)/2.0;
-			C_number += proba/2.0;
-			A_number += proba/2.0;
-			T_number += (1-proba)/2.0;
-		break;
-		case 'S' : // C or G 	Strong interaction
-			G_number += proba/2.0;
-			C_number += proba/2.0;
-			A_number += (1-proba)/2.0;
-			T_number += (1-proba)/2.0;
-		break;
-		case 'W' : // A, T or U 	Weak interaction
-			G_number += (1-proba)/2.0;
-			C_number += (1-proba)/2.0;
-			A_number += proba/2.0;
-			T_number += proba/2.0;
-		break;
-		case 'B' : // not A (i.e. C, G, T or U) 	B comes after A
-			G_number += proba/3.0;
-			C_number += proba/3.0;
-			A_number += 1-proba;
-			T_number += proba/3.0;
-		break;
-		case 'D' : // not C (i.e. A, G, T or U) 	D comes after C
-			G_number += proba/3.0;
-			C_number += 1-proba;
-			A_number += proba/3.0;
-			T_number += proba/3.0;
-		break;
-		case 'H' : // not G (i.e., A, C, T or U) 	H comes after G
-			G_number += 1-proba;
-			C_number += proba/3.0;
-			A_number += proba/3.0;
-			T_number += proba/3.0;
-		break;
-		case 'V' : // neither T nor U (i.e. A, C or G) 	V comes after U
-			G_number += proba/3.0;
-			C_number += proba/3.0;
-			A_number += proba/3.0;
-			T_number += 1-proba;
-		break;
-		case 'N' : // A C G T U 	aNy
-			G_number += 1/4.0;
-			C_number += 1/4.0;
-			A_number += 1/4.0;
-			T_number += 1/4.0;
-		break;
-		case 'X' : // masked
-			G_number += 0.0;
-			C_number += 0.0;
-			A_number += 0.0;
-			T_number += 0.0;
-		break;
-		case '-' : // gap of indeterminate length
-			G_number += 0.0;
-			C_number += 0.0;
-			A_number += 0.0;
-			T_number += 0.0;
-		break;
-		default:
-			G_number += 1/4.0;
-			C_number += 1/4.0;
-			A_number += 1/4.0;
-			T_number += 1/4.0;
-	}
-}
-
-bool Read::QC_check()
-{
-	if(m_QC_check)
-	{
-		int base_checked = 0;
-		for (int i = m_cut_begin; i < m_cut_end; i++)
-		{
-			if ( ((int)m_phred[i]-m_phred_score) >= m_min_QC_phred)
-				base_checked++;
-		}
-		if( (((double)base_checked) / ((double)m_cut_end - (double)m_cut_begin) * 100.0) >= m_min_QC_length)
-			return true;
-		else
-			return false;
-	}
-	else
-		return true;
 }

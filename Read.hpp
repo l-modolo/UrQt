@@ -39,12 +39,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <iostream>
 #include <fstream>
 #include <stdlib.h>
+#include "Segmentation.hpp"
 
 using namespace std;
 
+class Segmentation;
+
 class Read
 {
-	public:
+public:
 	Read(igzstream &fin, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, int strand_bit);
 	Read(igzstream &fin, char* out, bool gziped, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, int paired, int strand_bit);
 	Read(igzstream &fin, char* out, bool gziped, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, bool estimation, int paired, int strand_bit);
@@ -53,14 +56,28 @@ class Read
 	Read& operator=(Read const& readbis);
 	void operator()();
 	void init(igzstream &fin);
-	void polyNtrim();
-	void polyNtrimEstimate();
 	
 	void writeRead(ostream &stream);
 	void writeRead();
 	int writeSize();
 	void run();
 	void done();
+
+	char base();
+	int size();
+	int start();
+	int stop();
+	char seq(int i);
+	char phred(int i);
+	int min_QC_phred();
+	double min_QC_length();
+	static double G_probability();
+	static double C_probability();
+	static double A_probability();
+	static double T_probability();
+	int strand();
+	void set_trim(bool trim, int cut_begin, int cut_end);
+	bool QC_check();
 	
 	static double G_content();
 	static double C_content();
@@ -79,7 +96,7 @@ class Read
 
 	static void remove_empty_reads_paired(char* out, char* outpaired);
 
-	private:
+private:
 	bool m_init;
 	bool m_estimation;
 	bool m_sampled;
@@ -97,7 +114,6 @@ class Read
 	string m_name;
 	string m_seq;
 	string m_phred;
-	double* m_proba;
 	double m_log_read;
 	double m_log_polyN;
 	double m_min_QC_length;
@@ -130,31 +146,6 @@ class Read
 	static long long m_trimmed_reads;
 	
 	static mutex m_read;
-	
-	// compute the probability to have the right base
-	void phred();
-	
-	// in a read the probability of observing one of the four bases is roughly the same
-	// for each base we use the probability of being the right base
-	double read(int begin, int end);
-	double readEstimate(int begin, int end, double p_G, double p_C, double p_A, double p_T);
-	double reverseRead(int begin, int end);
-	double reverseReadEstimate(int begin, int end, double p_G, double p_C, double p_A, double p_T);
-
-	// in a polyN segment of size n we expect to observe N with with a probability 1/n
-	// for each N we use the probability of being the right base
-	// for each non-N we use 1 - the probability of being the right base
-	double polyN(int begin, int end);
-	double reversePolyN(int begin, int end);
-
-	double baseProba(double &pG, double &pC, double &pA, double &pT);
-	void baseProbaTotal();
-
-	double probaBaseDict(char base, double proba, double pG, double pC, double pA, double pT);
-	void numberBaseDict(char base, double proba, double &G_number, double &C_number, double &A_number, double &T_number);
-
-	// perform a quality check in the read, if it was constructed with the correct argument 
-	bool QC_check();
 };
 
 #endif

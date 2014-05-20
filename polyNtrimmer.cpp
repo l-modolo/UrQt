@@ -67,6 +67,10 @@ int main(int argc, char **argv)
 	double min_QC_phred = -1.0;
 	bool v = false;
 	bool gziped = false;
+	double pG = 0.25;
+	double pC = 0.25;
+	double pA = 0.25;
+	double pT = 0.25;
 	
 	static struct option long_options[] =
 	{
@@ -88,10 +92,14 @@ int main(int argc, char **argv)
 		{"min_QC_phred", required_argument, 0, 'm'},
 		{"gz", no_argument, 0, 'q'},
 		{"pos", required_argument, 0, 'r'},
+		{"pG", required_argument, 0, 's'},
+		{"pC", required_argument, 0, 't'},
+		{"pA", required_argument, 0, 'u'},
+		{"pT", required_argument, 0, 'v'},
 		{nullptr, 0, 0, 0}
 	};
 	
-	while ((c = getopt_long_only(argc, argv, "a:b:c:d:e:f:g:i:j:k:l:m:n:o:p:q:r", long_options, &option_index)) != -1) {
+	while ((c = getopt_long_only(argc, argv, "a:b:c:d:e:f:g:i:j:k:l:m:n:o:p:q:r:s:t:u:v", long_options, &option_index)) != -1) {
 		switch(c)
 		{
 			case 'a': in = optarg;
@@ -129,6 +137,14 @@ int main(int argc, char **argv)
 			case 'q': gziped = true;
 			break;
 			case 'r': strand = optarg;
+			break;
+			case 's': pG = atof(optarg);
+			break;
+			case 't': pC = atof(optarg);
+			break;
+			case 'u': pA = atof(optarg);
+			break;
+			case 'v': pT = atof(optarg);
 			break;
 			default : cout <<  "without argument : " << optopt << endl;
 		}
