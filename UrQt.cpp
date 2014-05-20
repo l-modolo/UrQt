@@ -54,7 +54,7 @@ int main(int argc, char **argv)
 	char* outpair = nullptr;
 	char* strand = nullptr;
 	char N = '?';
-	int phred_score = 1;
+	int phred_score = 33;
 	int max_head_trim = -1;
 	int max_tail_trim = -1;
 	int min_read_size = 0;
@@ -148,15 +148,14 @@ int main(int argc, char **argv)
 			default : cout <<  "without argument : " << optopt << endl;
 		}
 	}
-	if (phred_score != 1 && phred_score != 2 && phred_score != 3)
-		phred_score = 1;
 	if (thread_number < 0)
 		thread_number = 1;
 	
 	// the only required argument is the blast file
 	if(in == nullptr || out == nullptr || help){
+		cout <<  "UrQt.1.0.12" << endl;
 		cout <<  "Argument must be defined." << endl;
-		cout <<  "Usage: " << argv[0] <<".1.0.11 --in <input.fastq> --out <output.fastq>" << endl;
+		cout <<  "Usage: " << argv[0] <<"--in <input.fastq> --out <output.fastq>" << endl;
 		cout <<  "       --in input fastq file" << endl;
 		cout <<  "       --out output fastq file" << endl;
 		cout <<  "Optional:" << endl;
@@ -192,24 +191,25 @@ int main(int argc, char **argv)
 			cout << "output:                  " << out << endl;
 			if(paired > 0)
 				cout << "output pair:             " << outpair << endl;
+		}
 			switch(phred_score)
 			{
 				case 33 :
-					cout << "phred score:             Sanger (ASCII 33 to 126)" << endl;
-					phred_score = 1;
+					if(v){cout << "phred score:             Sanger (ASCII 33 to 126)" << endl;}
 				break;
 				case 64 :
-					cout << "phred score:             Illumina 1.3 (ASCII 64 to 126)" << endl;
-					phred_score = 2;
+					if(v){cout << "phred score:             Illumina 1.3 (ASCII 64 to 126)" << endl;}
 				break;
 				case 59 :
-					cout << "phred score:             Solexa/Illumina 1.0 (ASCII 59 to 126)" << endl;
-					phred_score = 3;
+					if(v){cout << "phred score:             Solexa/Illumina 1.0 (ASCII 59 to 126)" << endl;}
 				break;
 				default :
-					cout << "phred score:             Sanger (ASCII 33 to 126)" << endl;
-					phred_score = 1;
+					cout << "Warning: unknown phred base score " << phred_score << " setting to default (33)" << endl;
+					if(v){cout << "phred score:             Sanger (ASCII 33 to 126)" << endl;}
+					phred_score = 33;
 			}
+		if(v)
+		{
 			if(max_head_trim != -1)
 				cout << "max head trimming :      " << max_head_trim << " (nucleotides)" << endl;
 			if(max_tail_trim != -1)
@@ -289,6 +289,7 @@ int main(int argc, char **argv)
 	
 	char *in_tmp = nullptr;
 	char *out_tmp = nullptr;
+	int number_of_lines = 0;
 	while(paired >=0 && paired <= 2)
 	{
 		igzstream fin;
@@ -318,7 +319,7 @@ int main(int argc, char **argv)
 		
 		cout << "processing:              " << in_tmp << endl;
 		// counting number of reads
-		int number_of_lines = 0;
+		number_of_lines = 0;
 
 		string line_tmp;
 		line_tmp.reserve(1024);
@@ -365,7 +366,7 @@ int main(int argc, char **argv)
 			if(v){ p.start();}
 			for ( int i = 0; i < number_of_lines; i++)
 			{
-				if (v && (i+1)%1000 == 0){ p.update(i);}
+				if (v && (i+1)%10000 == 0){ p.update(i);}
 				readTrim.add(new Read(fin, out_tmp, gziped, &N, phred_score, threshold, max_head_trim, max_tail_trim, min_read_size, i, remove_empty_reads, min_QC_phred, min_QC_length, true, paired, strand_bit));
 			}
 			if(v){ p.update(number_of_lines);}
@@ -422,7 +423,7 @@ int main(int argc, char **argv)
 			if(v){ p.start();}
 			for ( int i = 0; i < number_of_lines; i++)
 			{
-				if (v && (i+1)%1000 == 0)
+				if (v && (i+1)%10000 == 0)
 					p.update(i);
 				readTrim.add(new Read(fin, out_tmp, gziped,  &N, phred_score, threshold, max_head_trim, max_tail_trim, min_read_size, i, remove_empty_reads, min_QC_phred, min_QC_length, paired, strand_bit));
 			}
@@ -442,10 +443,14 @@ int main(int argc, char **argv)
 		delete[] in_tmp;
 		delete[] out_tmp;
 	}
-	if(paired > 0)
+	if(paired > 0 && remove_empty_reads)
 	{
 		cout << "syncronisation of the paired files..." << endl;
-		Read::remove_empty_reads_paired(out, outpair);
+		ez::ezRateProgressBar<int> p(number_of_lines*2);
+		p.units = "reads";
+		if(v){ p.start();}
+		Read::remove_empty_reads_paired(out, outpair, &p, v);
+		if(v){ p.update(number_of_lines*2);}
 	}
 	return 0;
 }

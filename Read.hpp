@@ -34,7 +34,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdlib.h> 
 #include <cctype>
 #include <mutex>
-
+#include "ezRateProgressBar.hpp"
 #include "gzstream.h"
 #include <iostream>
 #include <fstream>
@@ -57,8 +57,8 @@ public:
 	void operator()();
 	void init(igzstream &fin);
 	
-	void writeRead(ostream &stream);
-	void writeRead();
+	inline void writeRead(ostream &stream);
+	inline void writeRead();
 	int writeSize();
 	void run();
 	void done();
@@ -98,7 +98,7 @@ public:
 	static void open(char* out);
 	static void close();
 
-	static void remove_empty_reads_paired(char* out, char* outpaired);
+	static void remove_empty_reads_paired(char* out, char* outpaired, ez::ezRateProgressBar<int>* p, bool v);
 
 private:
 	bool m_init;
@@ -154,7 +154,7 @@ private:
 	static long long m_trimmed_reads;
 	
 	static mutex m_read;
-	static void writeFinal(queue<int> m_paired_pos, char* out);
+	static void writeFinal(queue<int> m_paired_pos, char* out, ez::ezRateProgressBar<int>* p, bool v);
 
 };
 

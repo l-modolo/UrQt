@@ -163,7 +163,7 @@ void Read::close()
 	m_out_open = false;
 }
 
-void Read::remove_empty_reads_paired(char* out, char* outpair)
+void Read::remove_empty_reads_paired(char* out, char* outpair, ez::ezRateProgressBar<int>* p, bool v)
 {
 	close();
 	// we only keep the position present in the two list of removed reads
@@ -171,9 +171,15 @@ void Read::remove_empty_reads_paired(char* out, char* outpair)
 	while(!m_paired_pos_1.empty() && !m_paired_pos_2.empty())
 	{
 		while(!m_paired_pos_1.empty() && !m_paired_pos_2.empty() && m_paired_pos_1.front() < m_paired_pos_2.front())
+		{
+			m_paired_pos.push(m_paired_pos_1.front());
 			m_paired_pos_1.pop();
+		}
 		while(!m_paired_pos_1.empty() && !m_paired_pos_2.empty() && m_paired_pos_2.front() < m_paired_pos_1.front())
+		{
+			m_paired_pos.push(m_paired_pos_2.front());
 			m_paired_pos_2.pop();
+		}
 		while(!m_paired_pos_1.empty() && !m_paired_pos_2.empty() && m_paired_pos_1.front() == m_paired_pos_2.front())
 		{
 			m_paired_pos.push(m_paired_pos_1.front());
@@ -181,15 +187,15 @@ void Read::remove_empty_reads_paired(char* out, char* outpair)
 			m_paired_pos_2.pop();
 		}
 	}
-	writeFinal(m_paired_pos, out);
-	writeFinal(m_paired_pos, outpair);
+	writeFinal(m_paired_pos, out, p, v);
+	writeFinal(m_paired_pos, outpair, p, v);
 }
 
-void Read::writeFinal(queue<int> m_paired_pos, char* out)
+void Read::writeFinal(queue<int> m_paired_pos, char* out, ez::ezRateProgressBar<int>* p, bool v)
 {
 	// we process the file
 	m_paired_pos_1 = m_paired_pos;
-	char *out_tmp = new char[strlen(out) + 5];
+	char *out_tmp = new char[strlen(out) + 4];
 	strcpy(out_tmp, out);
 	strcat(out_tmp, ".tmp");
 	ofstream fout;
@@ -216,40 +222,57 @@ void Read::writeFinal(queue<int> m_paired_pos, char* out)
 		throw logic_error("1 ERROR: while opening input tmp file");
 	fin.rdbuf()->pubsetbuf(in_buffer, BUFFER_LENGTH);
 
-	string line_tmp;
-	line_tmp.reserve(2048);
-	int read_number = m_paired_pos_1.front()* 4 - 3;
 	int line = 0;
+	int read_number = 0;
+	int next_read_to_skip = m_paired_pos_1.front();
+	m_paired_pos_1.pop();
+	string name, seq, phred;
+	name.reserve(2048);
+	seq.reserve(2048);
+	phred.reserve(2048);
 	while(!fin.eof() && fin.good())
 	{
-		getline(fin, line_tmp);
-		line++;
-		if(m_paired_pos_1.empty() && !line_tmp.empty())
+		// reading of read
+		line = 0;
+		while(!fin.eof() && fin.good() && line <= 4)
+		{
+			line++;
+			switch(line)
+			{
+				case 1:
+					getline(fin, name);
+				break;
+				case 2:
+					getline(fin, seq);
+				break;
+				case 3:
+					getline(fin, phred);
+				break;
+				case 4:
+					getline(fin, phred);
+					read_number++;
+					if (v && (read_number+1)%10000 == 0)
+						//p->update(read_number);
+				break;
+			}
+		}
+		if((read_number < next_read_to_skip || next_read_to_skip == 0) && line >= 4)
 		{
 			if(m_gziped)
-				fout_gz << line_tmp << endl;
+				fout_gz << name << endl << seq << endl << "+" << endl << phred << endl;
 			else
-				fout << line_tmp << endl;
+				fout << name << endl << seq << endl << "+" << endl << phred << endl;
 		}
 		else
 		{
-			if(line < read_number && !line_tmp.empty())
+			if(m_paired_pos_1.empty())
 			{
-				if(m_gziped)
-					fout_gz << line_tmp << endl;
-				else
-					fout << line_tmp << endl;
+				next_read_to_skip = 0;
 			}
 			else
 			{
-				for(int i = 0; i < 3; i++)
-				{
-					getline(fin, line_tmp);
-					line++;
-				}
+				next_read_to_skip = m_paired_pos_1.front();
 				m_paired_pos_1.pop();
-				if(!m_paired_pos_1.empty())
-					read_number = m_paired_pos_1.front() * 4 - 3;
 			}
 		}
 	}
@@ -313,42 +336,31 @@ void Read::constructor(igzstream &fin,char* N, int phred_score, int threshold, i
 	m_read_number = read_number;
 	m_log_read = log(0.0);
 	m_log_polyN = log(0.0);
-	int line = 1;
 	bool new_line = true;
-	string line_tmp;
-	while( !fin.eof() && fin.good() && line <= 4)
+	int line = 1;
+	while(!fin.eof() && fin.good() && line <= 4)
 	{
-			switch(line)
-			{
-				case 1:
-					getline(fin, m_name);
-				break;
-				case 2:
-					getline(fin, m_seq);
-				break;
-				case 3:
-					getline(fin, line_tmp);
-				break;
-				case 4:
-					getline(fin, m_phred);
-				break;
-			}
-			line++;
+		switch(line)
+		{
+			case 1:
+				getline(fin, m_name);
+			break;
+			case 2:
+				getline(fin, m_seq);
+			break;
+			case 3:
+				getline(fin, m_phred);
+			break;
+			case 4:
+				getline(fin, m_phred);
+			break;
+		}
+		line++;
 	}
 	m_size = m_seq.length();
 	if(!m_phred_score_set)
-	{
-		switch(phred_score)
-		{
-			case 1: m_phred_score = 33.0;
-			break;
-			case 2: m_phred_score = 64.0;
-			break;
-			case 3: m_phred_score = 59.0;
-			break;
-			default: m_phred_score = 33.0;
-		}
-	}
+		m_phred_score = phred_score;
+	
 	m_threshold = threshold;
 	m_start = 0;
 	m_stop = m_size;
@@ -547,7 +559,7 @@ void Read::init(igzstream &fin)
 	m_init = true;
 }
 
-void Read::writeRead()
+inline void Read::writeRead()
 {
 	// we write the trimmed read if it's not just poly N
 	if(m_trimmed && m_cut_end > 0 && m_cut_begin >= 0 && m_cut_begin != m_cut_end)
@@ -556,11 +568,10 @@ void Read::writeRead()
 			writeRead(m_out_gz);
 		else
 			writeRead(m_out);
-		if(m_cut_end+1 < m_size || m_cut_begin > 0)
-			m_trimmed_reads++;
 	}
 	else
 	{
+		m_empty_reads++;
 		if(m_paired > 0)
 		{
 			if(m_gziped)
@@ -571,23 +582,25 @@ void Read::writeRead()
 				m_paired_pos_1.push(m_read_number + 1);
 			if (m_paired == 2)
 				m_paired_pos_2.push(m_read_number + 1);
-			m_trimmed_reads++;
 		}
-		if(!m_remove_empty_reads)
+		else
 		{
-			if(m_gziped)
-				writeRead(m_out_gz);
-			else
-				writeRead(m_out);
-			m_trimmed_reads++;
+			if(!m_remove_empty_reads)
+			{
+				if(m_gziped)
+					writeRead(m_out_gz);
+				else
+					writeRead(m_out);
+			}
 		}
-		m_empty_reads++;
 	}
+	if(m_cut_end+1 < m_size || m_cut_begin > 0)
+		m_trimmed_reads++;
 	m_base_number += m_size;
 	m_base_trimmed += m_size - (m_cut_end - m_cut_begin + 1);
 }
 
-void Read::writeRead(ostream &stream)
+inline void Read::writeRead(ostream &stream)
 {
 	if (m_name.at(0) == '@')
 		stream << m_name << endl;
