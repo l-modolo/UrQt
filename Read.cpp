@@ -214,7 +214,7 @@ void Read::remove_empty_reads_paired(char* out, char* outpair)
 	line_tmp.reserve(2048);
 	int read_number = m_paired_pos_1.front()* 4 - 3;
 	int line = 0;
-	while(fin.good())
+	while(!fin.eof())
 	{
 		getline(fin, line_tmp);
 		line++;
@@ -289,7 +289,7 @@ void Read::remove_empty_reads_paired(char* out, char* outpair)
 
 	read_number = m_paired_pos_1.front()* 4 - 3;
 	line = 0;
-	while(fin.good())
+	while(!fin.eof())
 	{
 		getline(fin, line_tmp);
 		line++;
@@ -385,7 +385,7 @@ void Read::constructor(igzstream &fin,char* N, int phred_score, int threshold, i
 	int line = 1;
 	bool new_line = true;
 	string line_tmp;
-	while( fin.good() && line <= 4)
+	while( !fin.eof() && line <= 4)
 	{
 			switch(line)
 			{
@@ -593,7 +593,7 @@ void Read::init(igzstream &fin)
 	int line = 1;
 	bool new_line = true;
 	string line_tmp;
-	while( fin.good() && line <= 4)
+	while( !fin.eof() && line <= 4)
 	{
 			switch(line)
 			{
@@ -667,7 +667,7 @@ void Read::writeRead(ostream &stream)
 	stream << endl << "+" << endl;
 	for (int i = m_cut_begin; i <= m_cut_end; i++)
 		stream << m_phred[i];
-	// stream << endl;
+	stream << endl;
 }
 
 int Read::writeSize()
