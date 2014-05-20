@@ -122,7 +122,6 @@ void mThreadCircular<T>::add(T* x, int number)
 		int pos = number%C_size;
 		if(C_number[pos] != -1)
 		{
-			cout << pos << ":" << C_number[pos] << ":" << number << endl;
 			throw logic_error("mThreadCircular full");
 		}
 		C_loop[pos] = x;

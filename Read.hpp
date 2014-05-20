@@ -19,6 +19,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef DEF_Read
 #define DEF_Read
 
+# define BUFFER_LENGTH 1024000
+
 #include <zlib.h>
 #include <cmath>
 #include <stdio.h>
@@ -28,23 +30,29 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <iostream>
 #include <fstream>
 #include <ostream>
+#include <sstream>
 #include <stdlib.h> 
 #include <cctype>
 #include <mutex>
+
+#include "gzstream.h"
+#include <iostream>
+#include <fstream>
+#include <stdlib.h>
 
 using namespace std;
 
 class Read
 {
 	public:
-	Read(gzFile* fin, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length);
-	Read(gzFile* fin, char* out, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length, int paired);
-	Read(gzFile* fin, char* out, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length, bool estimation, int paired);
-	void constructor(gzFile* fin,char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length);
+	Read(igzstream &fin, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length, int strand_bit);
+	Read(igzstream &fin, char* out, bool gziped, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length, int paired, int strand_bit);
+	Read(igzstream &fin, char* out, bool gziped, char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length, bool estimation, int paired, int strand_bit);
+	void constructor(igzstream &fin,char* N, int phred_score, int min_read_size, int min_polyN_size, int read_number, bool remove_empty_reads, bool fill_empty_reads, char* fill_empty_reads_with, int min_QC_phred, double min_QC_length, int strand_bit);
 	~Read();
 	Read& operator=(Read const& readbis);
 	void operator()();
-	void init(gzFile* fin);
+	void init(igzstream &fin);
 	void polyNtrim();
 	void polyNtrimEstimate();
 	
@@ -60,18 +68,20 @@ class Read
 	static double A_content();
 	static double T_content();
 	static bool sampling_done();
+	static string base_trimmed();
+
 
 	static int empty_reads();
 	static int trimmed_reads();
 	static void reset();
 
+	static void open(char* out);
 	static void close();
 
 	static void remove_empty_reads_paired(char* out, char* outpaired);
 
 	private:
 	bool m_init;
-	int m_paired;
 	bool m_estimation;
 	bool m_sampled;
 	bool m_trimmed;
@@ -79,11 +89,13 @@ class Read
 	bool m_fill_empty_reads;
 	bool m_QC_check;
 	int m_size;
-	int m_cut;
+	int m_cut_begin;
+	int m_cut_end;
 	int m_read_number;
 	int m_start;
 	int m_stop;
 	int m_min_QC_phred;
+	int m_strand;
 	string m_name;
 	string m_seq;
 	string m_phred;
@@ -99,6 +111,8 @@ class Read
 	static double m_C_number;
 	static double m_A_number;
 	static double m_T_number;
+	static long long m_base_number;
+	static long long m_base_trimmed;
 
 	static double m_G_probability;
 	static double m_C_probability;
@@ -108,12 +122,16 @@ class Read
 	static queue<int> m_paired_pos_1;
 	static queue<int> m_paired_pos_2;
 
+	static int m_paired;
 	static bool m_out_open;
+	static bool m_gziped;
 	static ofstream m_out;
+	static ogzstream m_out_gz;
 	static bool m_phred_score_set;
+	static char m_buffer[BUFFER_LENGTH];
 	static int m_phred_score;
-	static int m_empty_reads;
-	static int m_trimmed_reads;
+	static long long m_empty_reads;
+	static long long m_trimmed_reads;
 	
 	static mutex m_read;
 	
@@ -124,11 +142,14 @@ class Read
 	// for each base we use the probability of being the right base
 	double read(int begin, int end);
 	double readEstimate(int begin, int end, double p_G, double p_C, double p_A, double p_T);
+	double reverseRead(int begin, int end);
+	double reverseReadEstimate(int begin, int end, double p_G, double p_C, double p_A, double p_T);
 
 	// in a polyN segment of size n we expect to observe N with with a probability 1/n
 	// for each N we use the probability of being the right base
 	// for each non-N we use 1 - the probability of being the right base
 	double polyN(int begin, int end);
+	double reversePolyN(int begin, int end);
 
 	double baseProba(double &pG, double &pC, double &pA, double &pT);
 	void baseProbaTotal();

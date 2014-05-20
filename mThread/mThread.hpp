@@ -98,7 +98,6 @@ void mThread<T>::run(mThreadWaiting<T>* todo, mThreadDone<T>* done)
 				running = false;
 		}
 		while(running);
-		cout << "thread done" << endl;
 	}
 	catch(exception const& e)
 	{

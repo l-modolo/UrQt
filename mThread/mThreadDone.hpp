@@ -210,7 +210,6 @@ void mThreadDone<T>::run()
 				running = false;
 		}
 		while(running);
-		cout << "writing done" << endl;
 	}
 	catch(exception const& e)
 	{
@@ -317,8 +316,6 @@ int mThreadDone<T>::can_get()
 {
 	try
 	{
-		// cout << "Done | ";
-		// mThreadDone_loop.print();
 		unique_lock<mutex> lk(mThreadDone_onebyone);
 		if(!mThreadDone_isrun)
 			return false;

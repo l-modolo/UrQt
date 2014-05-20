@@ -16,6 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+# define BUFFER_LENGTH 1024000
+
 #include <zlib.h>
 #include <cstdlib>
 #include <stdio.h>
@@ -34,6 +36,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "ezRateProgressBar.hpp"
 #include "Read.hpp"
 
+#include "gzstream.h"
+#include <iostream>
+#include <fstream>
+#include <stdlib.h>
+
 using namespace std;
 
 int main(int argc, char **argv)
@@ -45,6 +52,7 @@ int main(int argc, char **argv)
 	char* inpair = nullptr;
 	char* out = nullptr;
 	char* outpair = nullptr;
+	char* strand = nullptr;
 	char N = 'A';
 	int phred_score = 1;
 	int min_read_size = 0;
@@ -55,10 +63,12 @@ int main(int argc, char **argv)
 	bool remove_empty_reads = true;
 	bool fill_empty_reads = false;
 	int paired = 0;
+	int strand_bit = 0;
 	char fill_empty_reads_with = '-';
 	double min_QC_length = -1.0;
 	double min_QC_phred = -1.0;
-	bool v = true;
+	bool v = false;
+	bool gziped = false;
 	
 	static struct option long_options[] =
 	{
@@ -78,10 +88,12 @@ int main(int argc, char **argv)
 		{"R", required_argument, 0, 'k'},
 		{"min_QC_length", required_argument, 0, 'l'},
 		{"min_QC_phred", required_argument, 0, 'm'},
+		{"gz", no_argument, 0, 'q'},
+		{"pos", required_argument, 0, 'r'},
 		{nullptr, 0, 0, 0}
 	};
 	
-	while ((c = getopt_long_only(argc, argv, "a:b:c:d:e:f:g:i:j:k:l:m:n", long_options, &option_index)) != -1) {
+	while ((c = getopt_long_only(argc, argv, "a:b:c:d:e:f:g:i:j:k:l:m:n:o:p:q:r", long_options, &option_index)) != -1) {
 		switch(c)
 		{
 			case 'a': in = optarg;
@@ -102,7 +114,7 @@ int main(int argc, char **argv)
 			break;
 			case 'g': thread_number = atoi(optarg);
 			break;
-			case 'h': v = false;
+			case 'h': v = true;
 			break;
 			case 'i': sampling = atoi(optarg); estimation = false;
 			break;
@@ -115,6 +127,10 @@ int main(int argc, char **argv)
 			case 'm': min_QC_phred = atof(optarg);
 			break;
 			case 'n': remove_empty_reads = false;
+			break;
+			case 'q': gziped = true;
+			break;
+			case 'r': strand = optarg;
 			break;
 			default : cout <<  "without argument : " << optopt << endl;
 		}
@@ -142,114 +158,151 @@ int main(int argc, char **argv)
 		cout <<  "       --min_read_size <number> (default: 0)" << endl;
 		cout <<  "       --min_polyN_size <number> (default: 0)" << endl;
 		cout <<  "       --min_polyN_size <number> (default: 0)" << endl;
+		cout <<  "       --pos <head|tail|both> (expected position of polyN in the sequences)" << endl;
 		cout <<  "       --s <number> number of reads to sample to compute the fixe proportion of the 4 different nucleotides instead of being computed in the partitioning of each reads" << endl;
 		cout <<  "       --S if present the proportion of the 4 different nucleotides is set to 1/4 instead of being computed in the partitioning of each reads" << endl;
 		cout <<  "       --r no removing of empty reads (100% polyN) (default: the empty reads are removed from the output)" << endl;
 		cout <<  "       --R <character> if present fill the empty reads (100% polyN) with this letter (default: the empty reads are removed from the output)" << endl;
 		cout <<  "       --min_QC_length <double> if present with --min_QC_phred the minimum percentage of base with min_QC_phred necessary to keep a read" << endl;
 		cout <<  "       --min_QC_phred <int> if present with --min_QC_length, the minimum phred score on min_QC_length percent of the base necessary to keep a read" << endl;
-		cout <<  "       --s no verbose" << endl;
+		cout <<  "       --v verbose" << endl;
+		cout <<  "       --gz gziped output" << endl;
 		return 1;
 	}
 	else
 	{
 		if(v)
 		{
-			cout <<  "input: " << in << endl;
+			cout << "input:                   " << in << endl;
 			if(paired > 0)
-				cout <<  "input pair: " << inpair << endl;
-			cout <<  "output: " << out << endl;
+				cout << "input pair:              " << inpair << endl;
+			cout << "output:                  " << out << endl;
 			if(paired > 0)
-				cout <<  "output pair: " << outpair << endl;
-			cout <<  "removing poly" << N << endl;
+				cout << "output pair:             " << outpair << endl;
+			cout << "removing:                poly" << N << endl;
+			
 			switch(phred_score)
 			{
 				case 1 :
-					cout <<  "phred score: Sanger (ASCII 33 to 126)" << endl;
+					cout << "phred score:             Sanger (ASCII 33 to 126)" << endl;
 				break;
 				case 2 :
-					cout <<  "phred score: Illumina 1.3 (ASCII 64 to 126)" << endl;
+					cout << "phred score:             Illumina 1.3 (ASCII 64 to 126)" << endl;
 				break;
 				case 3 :
-					cout <<  "phred score: Solexa/Illumina 1.0 (ASCII 59 to 126)" << endl;
+					cout << "phred score:             Solexa/Illumina 1.0 (ASCII 59 to 126)" << endl;
 				break;
 				default :
-					cout <<  "phred score: Sanger (ASCII 33 to 126)" << endl;
+					cout << "phred score:             Sanger (ASCII 33 to 126)" << endl;
 					phred_score = 1;
 			}
-			cout <<  "min read size: " << min_read_size << endl;
-			cout <<  "min polyN size: " << min_polyN_size << endl;
-			cout <<  "thread number: " << thread_number << endl;
-			if(sampling > 0)
-				cout << "read to sample: " << sampling << endl;
-			cout << "estimation of the base probability: ";
-			if(estimation)
-				cout << "true" << endl;
+			cout << "min read size:           " << min_read_size << endl;
+			cout << "min polyN size:          " << min_polyN_size << endl;
+			cout << "thread number:           " << thread_number << endl;
+			if(strand == nullptr)
+			{
+				strand_bit = 0;
+				cout << "remove ployN at:         end" << endl;
+			}
 			else
-				cout << "false" << endl;
+			{
+				if(strcmp(strand,"head") == 0)
+				{
+					strand_bit = 1;
+					cout << "remove ployN at:         head" << endl;
+				}
+				else
+				{
+					if(strcmp(strand,"both") == 0)
+					{
+						strand_bit = 2;
+						cout << "remove ployN at:         head and tail" << endl;
+					}
+					else
+					{
+						strand_bit = 0;
+						cout << "remove ployN at:         tail" << endl;
+					}
+				}
+			}
+				if(sampling > 0)
+				cout << "read to sample:          " << sampling << endl;
+			cout << "probability estimation:  ";
+			if(estimation)
+				cout << "for each reads" << endl;
+			else
+				cout << "global" << endl;
 			if(remove_empty_reads)
-				cout << "removing empty reads: true" << endl;
+				cout << "removing empty reads:    true" << endl;
 			else
 				if(fill_empty_reads)
 				{
-						cout << "filling empty reads with:" << fill_empty_reads_with << endl;
+					cout << "filling empty reads with:" << fill_empty_reads_with << endl;
 					if(min_QC_length > 0.0 && min_QC_phred > 0)
 					{
-						cout << "removing reads with a phred score of less than " << min_QC_phred << " on " << min_QC_length << "% of their sequences"<< endl;
+						cout << "removing reads with :" << endl;
+						cout << " -phred score          >=" << min_QC_phred << endl;
+						cout << " -on:                    " << min_QC_length << "% of their sequences"<< endl;
 					}
 				}
 				else
-					cout << "removing empty reads: false" << endl;
+					cout << "removing empty reads:    false" << endl;
+			if(gziped)
+				cout << "compressed output" << endl;
 		}
 	}
 	
+	char *in_tmp = nullptr;
 	char *out_tmp = nullptr;
 	while(paired >=0 && paired <= 2)
 	{
-		gzFile fin;
+		igzstream fin;
+		char buffer[BUFFER_LENGTH];
 		if(paired <= 1)
 		{
-			fin = gzopen(in, "r");
+			in_tmp = new char[strlen(in) + 1];
 			out_tmp = new char[strlen(out) + 1];
+			strcpy(in_tmp, in);
 			strcpy(out_tmp, out);
-			if(!fin)
-			{
-				cerr << "gzopen of " << inpair << " failed" << endl;
-				exit(-1);
-			}
 		}
 		else
 		{
-			fin = gzopen(inpair, "r");
+			in_tmp = new char[strlen(inpair) + 1];
 			out_tmp = new char[strlen(outpair) + 1];
+			strcpy(in_tmp, inpair);
 			strcpy(out_tmp, outpair);
-			if(!fin)
-			{
-				cerr << "gzopen of " << inpair << " failed" << endl;
-				exit(-1);
-			}
+			
+		}
+		fin.open(in_tmp);
+		fin.rdbuf()->pubsetbuf(buffer, BUFFER_LENGTH);
+		if(!fin.good())
+		{
+			cerr << "open of " << in_tmp << " failed" << endl;
+			exit(-1);
 		}
 		
-		cout << "#############################" << endl << "processing: " << out_tmp << endl;
+		cout << "processing:              " << in_tmp << endl;
 		// counting number of reads
 		int number_of_lines = 0;
-		int bytes_read;
-		char buffer[1024*1000];
 
-		ifstream fin_count;
-		fin_count.open(in);
-		// char buffer[1024*1000];
-		fin_count.rdbuf()->pubsetbuf(buffer, 1024*1000);
 		string line_tmp;
 		line_tmp.reserve(2048);
-		while(getline(fin_count, line_tmp))
+		while(getline(fin, line_tmp))
 			number_of_lines++;
-		fin_count.close();
 		line_tmp.clear();
-		
-		gzrewind(fin);
+		fin.close();
+		fin.clear();
+
+		fin.open(in_tmp);
+		fin.rdbuf()->pubsetbuf(buffer, BUFFER_LENGTH);
+		if(!fin.good())
+		{
+			cerr << "open of " << in_tmp << " failed" << endl;
+			exit(-1);
+		}
+
 		number_of_lines = number_of_lines / 4;
-		cout <<  "reads number: " << number_of_lines << endl;
+		cout <<  "reads number:            " << number_of_lines << endl;
 		
 		int t_number;
 		if(thread_number < 1)
@@ -270,24 +323,23 @@ int main(int argc, char **argv)
 		if(estimation || sampling == number_of_lines)
 		{
 			//trimming of the reads
-			cout << "trimming: 0%\r";
-
 			mThread<Read> readTrim(t_number, true);
 			
 			ez::ezRateProgressBar<int> p(number_of_lines);
 			p.units = "reads";
-			p.start();
+			if(v) p.start();
 			for ( int i = 0; i < number_of_lines; i++)
 			{
-				if ((i+1)%1000 == 0)
+				if (v && (i+1)%1000 == 0)
 					p.update(i);
-				readTrim.add(new Read(&fin, out_tmp, &N, phred_score, min_read_size, min_polyN_size, i, remove_empty_reads, fill_empty_reads, &fill_empty_reads_with, min_QC_phred, min_QC_length, true, paired));
+				readTrim.add(new Read(fin, out_tmp, gziped, &N, phred_score, min_read_size, min_polyN_size, i, remove_empty_reads, fill_empty_reads, &fill_empty_reads_with, min_QC_phred, min_QC_length, true, paired, strand_bit));
 			}
-			cout << "trimming:  100%" << endl;
+			if(v) p.update(number_of_lines);
 			readTrim.stop();
 
-			cout << "number of empty reads: " << Read::empty_reads() << endl;
+			cout << "number of empty reads:   " << Read::empty_reads() << endl;
 			cout << "number of trimmed reads: " << Read::trimmed_reads() << endl;
+			cout << "number of trimmer bases: " << Read::base_trimmed() << endl;
 		}
 		else 
 		{
@@ -320,7 +372,7 @@ int main(int argc, char **argv)
 					{
 						if(*it == i)
 						{
-							readSample.add(new Read(&fin, &N, phred_score, min_read_size, min_polyN_size, i, remove_empty_reads, fill_empty_reads, &fill_empty_reads_with, min_QC_phred, min_QC_length));
+							readSample.add(new Read(fin, &N, phred_score, min_read_size, min_polyN_size, i, remove_empty_reads, fill_empty_reads, &fill_empty_reads_with, min_QC_phred, min_QC_length, strand_bit));
 							it++;
 						}
 						i++;
@@ -328,42 +380,44 @@ int main(int argc, char **argv)
 				}
 				readSample.stop();
 				
-				cout << "probability of G: " << Read::G_content() << endl;
-				cout << "probability of C: " << Read::C_content() << endl;
-				cout << "probability of A: " << Read::A_content() << endl;
-				cout << "probability of T: " << Read::T_content() << endl;
-			}
+				cout << "probability of G:        " << Read::G_content() << endl;
+				cout << "probability of C:        " << Read::C_content() << endl;
+				cout << "probability of A:        " << Read::A_content() << endl;
+				cout << "probability of T:        " << Read::T_content() << endl;			}
 			
-			//trimming of the reads
-			cout << "trimming: 0%\r";
-			
+			//trimming of the reads			
 			mThread<Read> readTrim(t_number, true);
 			
 			ez::ezRateProgressBar<int> p(number_of_lines);
 			p.units = "reads";
-			p.start();
+			if(v) p.start();
 			for ( int i = 0; i < number_of_lines; i++)
 			{
-				if ((i+1)%1000 == 0)
+				if (v && (i+1)%1000 == 0)
 					p.update(i);
-				readTrim.add(new Read(&fin, out_tmp, &N, phred_score, min_read_size, min_polyN_size, i, remove_empty_reads, fill_empty_reads, &fill_empty_reads_with, min_QC_phred, min_QC_length, paired));
+				readTrim.add(new Read(fin, out_tmp, gziped,  &N, phred_score, min_read_size, min_polyN_size, i, remove_empty_reads, fill_empty_reads, &fill_empty_reads_with, min_QC_phred, min_QC_length, paired, strand_bit));
 			}
-			cout << "trimming:  100%" << endl;
+			if(v) p.update(number_of_lines);
 			readTrim.stop();
 			
-			cout << "number of empty reads: " << Read::empty_reads() << endl;
+			cout << "number of empty reads:   " << Read::empty_reads() << endl;
 			cout << "number of trimmed reads: " << Read::trimmed_reads() << endl;
 		}
-		gzclose(fin);
 		if(paired > 0)
 			paired++;
 		else
 			paired--;
 		Read::reset();
+		fin.close();
+		fin.clear();
+		delete[] in_tmp;
 		delete[] out_tmp;
 	}
 	if(paired > 0)
+	{
+		cout << "syncronisation of the paired files..." << endl;
 		Read::remove_empty_reads_paired(out, outpair);
+	}
 	return 0;
 }
 
