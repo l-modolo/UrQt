@@ -151,12 +151,12 @@ int main(int argc, char **argv)
 	if (phred_score != 1 && phred_score != 2 && phred_score != 3)
 		phred_score = 1;
 	if (thread_number < 0)
-		thread_number == 1;
+		thread_number = 1;
 	
 	// the only required argument is the blast file
 	if(in == nullptr || out == nullptr || help){
 		cout <<  "Argument must be defined." << endl;
-		cout <<  "Usage: " << argv[0] <<" --in <input.fastq> --out <output.fastq>" << endl;
+		cout <<  "Usage: " << argv[0] <<".1.0.11 --in <input.fastq> --out <output.fastq>" << endl;
 		cout <<  "       --in input fastq file" << endl;
 		cout <<  "       --out output fastq file" << endl;
 		cout <<  "Optional:" << endl;

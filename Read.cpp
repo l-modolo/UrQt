@@ -181,7 +181,13 @@ void Read::remove_empty_reads_paired(char* out, char* outpair)
 			m_paired_pos_2.pop();
 		}
 	}
-	// we process the first file
+	writeFinal(m_paired_pos, out);
+	writeFinal(m_paired_pos, outpair);
+}
+
+void Read::writeFinal(queue<int> m_paired_pos, char* out)
+{
+	// we process the file
 	m_paired_pos_1 = m_paired_pos;
 	char *out_tmp = new char[strlen(out) + 5];
 	strcpy(out_tmp, out);
@@ -214,11 +220,11 @@ void Read::remove_empty_reads_paired(char* out, char* outpair)
 	line_tmp.reserve(2048);
 	int read_number = m_paired_pos_1.front()* 4 - 3;
 	int line = 0;
-	while(!fin.eof())
+	while(!fin.eof() && fin.good())
 	{
 		getline(fin, line_tmp);
 		line++;
-		if(m_paired_pos_1.empty())
+		if(m_paired_pos_1.empty() && !line_tmp.empty())
 		{
 			if(m_gziped)
 				fout_gz << line_tmp << endl;
@@ -227,7 +233,7 @@ void Read::remove_empty_reads_paired(char* out, char* outpair)
 		}
 		else
 		{
-			if(line < read_number)
+			if(line < read_number && !line_tmp.empty())
 			{
 				if(m_gziped)
 					fout_gz << line_tmp << endl;
@@ -261,82 +267,7 @@ void Read::remove_empty_reads_paired(char* out, char* outpair)
 	fin.clear();
 	remove(out_tmp);
 	delete[] out_tmp;
-
-	// we process the second file
-	m_paired_pos_1 = m_paired_pos;
-	out_tmp = new char[strlen(outpair) + 5];
-	strcpy(out_tmp, outpair);
-	strcat(out_tmp, ".tmp");
-
-	if(m_gziped)
-	{
-		fout_gz.open(outpair);
-		if(!fout_gz.good())
-			throw logic_error("ERROR: while opening output file");
-		fout_gz.rdbuf()->pubsetbuf(out_buffer, BUFFER_LENGTH);
-	}
-	else
-	{
-		fout.open(outpair);
-		if(!fout.good())
-			throw logic_error("ERROR: while opening output file");
-		fout.rdbuf()->pubsetbuf(out_buffer, BUFFER_LENGTH);
-	}
-	fin.open(out_tmp);
-	if(!fin.good())
-		throw logic_error("2 ERROR: while opening input tmp file");
-	fin.rdbuf()->pubsetbuf(in_buffer, BUFFER_LENGTH);
-
-	read_number = m_paired_pos_1.front()* 4 - 3;
-	line = 0;
-	while(!fin.eof())
-	{
-		getline(fin, line_tmp);
-		line++;
-		if(m_paired_pos_1.empty())
-		{
-			if(m_gziped)
-				fout_gz << line_tmp << endl;
-			else
-				fout << line_tmp << endl;
-		}
-		else
-		{
-			if(line < read_number)
-			{
-				if(m_gziped)
-					fout_gz << line_tmp << endl;
-				else
-					fout << line_tmp << endl;
-			}
-			else
-			{
-				for(int i = 0; i < 3; i++)
-				{
-					getline(fin, line_tmp);
-					line++;
-				}
-				m_paired_pos_1.pop();
-				if(!m_paired_pos_1.empty())
-					read_number = m_paired_pos_1.front() * 4 - 3;
-			}
-		}
-	}
-	if(m_gziped)
-	{
-		fout_gz.close();
-		fout_gz.clear();
-	}
-	else
-	{
-		fout.close();
-		fout.clear();
-	}
-	fin.close();
-	remove(out_tmp);
-	delete[] out_tmp;
 }
-
 // Definition of the non static stuff
 
 // estimation of base probability for each read
@@ -385,7 +316,7 @@ void Read::constructor(igzstream &fin,char* N, int phred_score, int threshold, i
 	int line = 1;
 	bool new_line = true;
 	string line_tmp;
-	while( !fin.eof() && line <= 4)
+	while( !fin.eof() && fin.good() && line <= 4)
 	{
 			switch(line)
 			{
@@ -593,7 +524,7 @@ void Read::init(igzstream &fin)
 	int line = 1;
 	bool new_line = true;
 	string line_tmp;
-	while( !fin.eof() && line <= 4)
+	while( !fin.eof() && fin.good() && line <= 4)
 	{
 			switch(line)
 			{
@@ -619,7 +550,7 @@ void Read::init(igzstream &fin)
 void Read::writeRead()
 {
 	// we write the trimmed read if it's not just poly N
-	if(m_trimmed && m_cut_end >= 0 && m_cut_begin >= 0 && m_cut_begin != m_cut_end)
+	if(m_trimmed && m_cut_end > 0 && m_cut_begin >= 0 && m_cut_begin != m_cut_end)
 	{
 		if(m_gziped)
 			writeRead(m_out_gz);

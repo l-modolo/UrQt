@@ -154,6 +154,8 @@ private:
 	static long long m_trimmed_reads;
 	
 	static mutex m_read;
+	static void writeFinal(queue<int> m_paired_pos, char* out);
+
 };
 
 #endif
