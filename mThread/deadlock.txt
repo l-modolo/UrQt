@@ -1,0 +1,60 @@
+/*
+Condition :
+ - The list cannot be empty and full at the same time -> Should be OK
+ - If the list is full, we have to wait until it is not the case before adding a new task -> Should be OK
+ - If the list is empty, we have to wait until it is not the case before getting a new task -> Should be OK
+ - No job can check the size of the list if another one is changing it <-> No job can change the size of the list if another is checking it -> Can pause problem ?
+*/
+
+// Adding a job
+void mThreadWaiting<T>::add(T* x)
+	unique_lock<mutex> full(mThread_full);
+	while(size() >= mThread_size) // is the list is full we enter a waiting state
+		mThread_full_cond.wait(full);
+	unique_lock<mutex> lk(mThread_onebyone); // one job at the time
+	mThread_empty_cond.notify_one(); // we wakeup one job in a waiting state for get
+
+// Getting a job
+void mThreadWaiting<T>::get(T** x, int* number)
+	unique_lock<mutex> empty(mThread_empty);
+	while(size() <= 0 && !mThread_stop_signal) // is the list is empty we enter a waiting state
+		mThread_empty_cond.wait(empty);
+	unique_lock<mutex> lk(mThread_onebyone); // one job at the time
+	mThread_full_cond.notify_one(); // we wakeup one job in a waiting state for add
+
+// Getting the size of the list
+int mThreadWaiting<T>::size()
+	unique_lock<mutex> lk(mThread_onebyone); // one job at the time
+
+
+
+for i in {1..10000}
+do
+	echo "-S "$i && \
+	./polyNtrimmer --in  canberra.fastq --out test -m 5 -S && \
+	./polyNtrimmer --in  chicharo_Akkouche-t.fastq --out test -m 5 -S && \
+	./polyNtrimmer --in  chichon.fastq --out test -m 5 -S && \
+	./polyNtrimmer --in  ds_195.fastq --out test -m 5 -S && \
+	./polyNtrimmer --in  makindu.fastq --out test -m 5 -S && \
+	./polyNtrimmer --in  makindu_Akkouche-t.fastq --out test -m 5 -S && \
+	./polyNtrimmer --in  mayotte.fastq --out test -m 5 -S && \
+	./polyNtrimmer --in  mayotte_Akkouche-t.fastq --out test -m 5 -S && \
+	echo "-s "$i && \
+	./polyNtrimmer --in  canberra.fastq --out test -m 5 -s 10000 && \
+	./polyNtrimmer --in  chicharo_Akkouche-t.fastq --out test -m 5 -s 10000 && \
+	./polyNtrimmer --in  chichon.fastq --out test -m 5 -s 10000 && \
+	./polyNtrimmer --in  ds_195.fastq --out test -m 5 -s 10000 && \
+	./polyNtrimmer --in  makindu.fastq --out test -m 5 -s 10000 && \
+	./polyNtrimmer --in  makindu_Akkouche-t.fastq --out test -m 5 -s 10000 && \
+	./polyNtrimmer --in  mayotte.fastq --out test -m 5 -s 10000 && \
+	./polyNtrimmer --in  mayotte_Akkouche-t.fastq --out test -m 5 -s 10000 && \
+	echo $i && \
+	./polyNtrimmer --in  canberra.fastq --out test -m 5 && \
+	./polyNtrimmer --in  chicharo_Akkouche-t.fastq --out test -m 5 && \
+	./polyNtrimmer --in  chichon.fastq --out test -m 5 && \
+	./polyNtrimmer --in  ds_195.fastq --out test -m 5 && \
+	./polyNtrimmer --in  makindu.fastq --out test -m 5 && \
+	./polyNtrimmer --in  makindu_Akkouche-t.fastq --out test -m 5 && \
+	./polyNtrimmer --in  mayotte.fastq --out test -m 5 && \
+	./polyNtrimmer --in  mayotte_Akkouche-t.fastq --out test -m 5
+done
