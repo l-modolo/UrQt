@@ -182,6 +182,10 @@ void Segmentation::polyNtrimEstimate()
 			logL = log(0.0);
 			newlogL = 1.0;
 			oldlogL = 0.0;
+			pG = 0.25;
+			pC = 0.25;
+			pA = 0.25;
+			pT = 0.25;
 			while( labs(newlogL - oldlogL) > 0.01 && iter < 100 )
 			{
 				m_log_read = 0.0;
@@ -189,9 +193,9 @@ void Segmentation::polyNtrimEstimate()
 				oldlogL = newlogL;
 				logL = log(0.0);
 				// if i = 0 we have a polyN read, if i = m_size we have a read without polyN
-				for(int i = m_read->start()-1; i <= m_cut_end; i++) // the last possible cut point is outside the read
+				for(int i = m_cut_end; i >= m_read->start()-1; i--) // the last possible cut point is outside the read
 				{
-					newlogL = reversePolyN(m_read->start(), i) + reverseRead(i+1, m_cut_end, pG, pC, pA, pT);
+					newlogL = polyN(m_read->start(), i) + read(i+1, m_cut_end, pG, pC, pA, pT);
 					if(newlogL > logL)
 					{
 						logL = newlogL;
@@ -380,15 +384,10 @@ inline double Segmentation::reversePolyN(int begin, int end)
 		double logL = 0.0;
 		if(begin == end) // if this is the first iteration we have to compute the full logL
 		{
-			if(m_N == '?')
-				logL = log(1.0/4.0) + log(1-m_proba[begin]);
+			if (m_read->seq(begin) == m_N)
+				logL = log(m_proba[begin]);
 			else
-			{
-				if (m_read->seq(begin) == m_N)
-					logL = log(m_proba[begin]);
-				else
-					logL = log(1.0/4.0) + log(1-m_proba[begin]);
-			}
+				logL = log(1.0/4.0) + log(1-m_proba[begin]);
 		}
 		else
 		{

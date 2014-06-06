@@ -152,7 +152,7 @@ int main(int argc, char **argv)
 		thread_number = 1;
 	// the only required argument is the blast file
 	if(in == nullptr || out == nullptr || help){
-		cout <<  "UrQt.1.0.14" << endl;
+		cout <<  "UrQt.1.0.15" << endl;
 		cout <<  "Argument must be defined." << endl;
 		cout <<  "Usage: " << argv[0] <<"--in <input.fastq> --out <output.fastq>" << endl;
 		cout <<  "       --in input fastq file" << endl;
