@@ -70,6 +70,7 @@ int main(int argc, char **argv)
 	bool v = false;
 	bool gziped = false;
 	bool help = false;
+	int read_buffer = 1000;
 	
 	static struct option long_options[] =
 	{
@@ -95,10 +96,11 @@ int main(int argc, char **argv)
 		{"help", no_argument, 0, 's'},
 		{"h", no_argument, 0, 't'},
 		{"min_read_size", required_argument, 0, 'v'},
+		{"buffer", required_argument, 0, 'w'},
 		{nullptr, 0, 0, 0}
 	};
 	
-	while ((c = getopt_long_only(argc, argv, "a:b:c:d:e:f:g:i:j:k:l:m:n:o:p:q:r:s:t:u:v", long_options, &option_index)) != -1) {
+	while ((c = getopt_long_only(argc, argv, "a:b:c:d:e:f:g:i:j:k:l:m:n:o:p:q:r:s:t:u:v:w", long_options, &option_index)) != -1) {
 		switch(c)
 		{
 			case 'a': in = optarg;
@@ -144,6 +146,8 @@ int main(int argc, char **argv)
 			case 'u': threshold = atoi(optarg);
 			break;
 			case 'v': min_read_size = atof(optarg);
+			break;
+			case 'w': read_buffer = atoi(optarg);
 			break;
 			default : cout <<  "without argument : " << optopt << endl;
 		}
@@ -283,6 +287,7 @@ int main(int argc, char **argv)
 				cout << "gz" << endl;
 			else
 				cout << "disable" << endl;
+			cout << "max read in memory       "<< read_buffer<< " (reads)" << endl;
 		}
 	}
 	try
@@ -382,7 +387,7 @@ int main(int argc, char **argv)
 		if(estimation || sampling == number_of_lines)
 		{
 			//trimming of the reads
-			mThread<Read> readTrim(t_number, true);
+			mThread<Read> readTrim(t_number, true, read_buffer);
 			
 			ez::ezRateProgressBar<int> p(number_of_lines);
 			p.units = "reads";
@@ -402,7 +407,7 @@ int main(int argc, char **argv)
 				cout << "sampling..." << endl;
 				
 				set<int> reads_to_sample;
-				mThread<Read> readSample(t_number, true);
+				mThread<Read> readSample(t_number, true, read_buffer);
 				while(!Read::sampling_done())
 				{
 					random_device rd;
@@ -439,7 +444,7 @@ int main(int argc, char **argv)
 				cout << "proportion of T:         " << Read::T_content() << endl;
 			}
 			//trimming of the reads			
-			mThread<Read> readTrim(t_number, true);
+			mThread<Read> readTrim(t_number, true, read_buffer);
 			
 			ez::ezRateProgressBar<int> p(number_of_lines);
 			p.units = "reads";

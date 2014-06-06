@@ -38,7 +38,7 @@ class mThread
 {
 	public:
 	mThread(int number);
-	mThread(int number, bool done_action);
+	mThread(int number, bool done_action, int job_number);
 	~mThread();
 	
 	void stop();
@@ -68,7 +68,7 @@ mThread<T>::mThread(int number) : mThread_waiting(number*10), mThread_done()
 // we create a list of number thread ready to run and number*10 thread_waiting to
 // pileup the jobs to do by those threads
 template <typename T>
-mThread<T>::mThread(int number, bool done_action) : mThread_waiting(number*4000), mThread_done(number*1000)
+mThread<T>::mThread(int number, bool done_action, int job_buffer) : mThread_waiting(number*job_buffer), mThread_done(number*job_buffer*4)
 {
 	mThread_stop = false;
 	mThread_done_task = true;
