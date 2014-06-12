@@ -1,6 +1,6 @@
-CC=g++
-CFLAGS=-std=c++0x -pthread -I/usr/local/include -L/usr/lib -lz # -g -DEBUG -pg
-CFLAGSTATIC=-std=c++0x -Wl,--whole-archive -lpthread -Wl,--no-whole-archive -I/usr/local/include -L/usr/lib -lz -static-libgcc -static-libstdc++ -static # -g -DEBUG -pg
+CC=gcc
+CFLAGS=-std=c++0x -pthread -I/usr/local/include -L/usr/lib -lz
+CFLAGSTATIC=-std=c++0x -Wl,--whole-archive -lpthread -Wl,--no-whole-archive -I/usr/local/include -L/usr/lib -lz -static-libgcc -static-libstdc++ -static
 
 all:gzstream.o Read.o Segmentation.o UrQt.cpp
 	$(CC) $(CFLAGS) gzstream.o Read.o Segmentation.o UrQt.cpp -o UrQt
