@@ -473,7 +473,7 @@ int main(int argc, char **argv)
 	}
 	if(paired > 0 && remove_empty_reads)
 	{
-		cout << "syncronisation of the paired files..." << endl;
+		cout << "synchronisation of the paired files..." << endl;
 		ez::ezRateProgressBar<int> p(number_of_lines*2);
 		p.units = "reads";
 		if(v){ p.start();}
