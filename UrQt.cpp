@@ -156,7 +156,7 @@ int main(int argc, char **argv)
 		thread_number = 1;
 	// the only required argument is the blast file
 	if(in == nullptr || out == nullptr || help){
-		cout <<  "UrQt.1.0.15" << endl;
+		cout <<  "UrQt.1.0.16" << endl;
 		cout <<  "Argument must be defined." << endl;
 		cout <<  "Usage: " << argv[0] <<"--in <input.fastq> --out <output.fastq>" << endl;
 		cout <<  "       --in input fastq file" << endl;
@@ -186,6 +186,115 @@ int main(int argc, char **argv)
 	}
 	else
 	{
+		try
+		{
+			if(strcmp(in, out) == 0)
+					throw logic_error("in and out are the same file");
+			// test if input if readable for first file
+			igzstream fin;
+			fin.open(in);
+			if(!fin.good())
+				throw logic_error("while opening input file");
+			fin.close();
+			fin.clear();
+			// test if output is writable for first file
+			char *out_tmp = new char[strlen(out) + 4];
+			strcpy(out_tmp, out);
+			strcat(out_tmp, ".tmp");
+			ofstream fout;
+			ogzstream fout_gz;
+			char out_buffer[BUFFER_LENGTH];
+			if(gziped)
+			{
+				fout_gz.open(out);
+				if(!fout_gz.good())
+					throw logic_error("while opening output file");
+				fout_gz.close();
+				fout_gz.clear();
+				fout_gz.open(out_tmp);
+				if(!fout_gz.good())
+					throw logic_error("while opening output tmp file");
+				fout_gz.close();
+				fout_gz.clear();
+			}
+			else
+			{
+				fout.open(out);
+				if(!fout.good())
+					throw logic_error("while opening output file");
+				fout.close();
+				fout.clear();
+				fout.open(out_tmp);
+				if(!fout.good())
+					throw logic_error("while opening output tmp file");
+				fout.close();
+				fout.clear();
+			}
+			delete[] out_tmp;
+			if(paired > 0) // if we work with paired files
+			{
+				igzstream fin;
+				fin.open(inpair);
+				if(!fin.good())
+					throw logic_error("while opening pair input file");
+				fin.close();
+				fin.clear();
+
+				if(strcmp(in, inpair) == 0)
+					throw logic_error("The two imput files are the same");
+				if(strcmp(out, outpair) == 0)
+					throw logic_error("The two output files are the same");
+				if(strcmp(inpair, outpair) == 0)
+					throw logic_error("inpair and outpair are the same file");
+				if(strcmp(in, outpair) == 0)
+					throw logic_error("in and outpair are the same file");
+				if(strcmp(inpair, out) == 0)
+					throw logic_error("inpair and out are the same file");
+				if(strcmp(inpair, outpair) == 0)
+					throw logic_error("in and out are the same file");
+				// test if output is writable for pair file
+				char *outpair_tmp = new char[strlen(outpair) + 4];
+				strcpy(outpair_tmp, outpair);
+				strcat(outpair_tmp, ".tmp");
+				ofstream foutpair;
+				ogzstream foutpair_gz;
+				char outpair_buffer[BUFFER_LENGTH];
+				if(gziped)
+				{
+					foutpair_gz.open(outpair);
+					if(!foutpair_gz.good())
+						throw logic_error("while opening pair output file");
+					foutpair_gz.close();
+					foutpair_gz.clear();
+					foutpair_gz.open(outpair_tmp);
+					if(!foutpair_gz.good())
+						throw logic_error("while opening pair output file");
+					foutpair_gz.close();
+					foutpair_gz.clear();
+				}
+				else
+				{
+					foutpair.open(outpair);
+					if(!foutpair.good())
+						throw logic_error("while opening pair output file");
+					foutpair.close();
+					foutpair.clear();
+					foutpair.open(outpair_tmp);
+					if(!foutpair.good())
+						throw logic_error("while opening pair output file");
+					foutpair.close();
+					foutpair.clear();
+				}
+
+				delete[] outpair_tmp;
+			}
+		}
+		catch(exception const& e)
+		{
+			cerr << "ERROR : " << e.what() << endl;
+			exit(-1);
+		}
+
 		if(v)
 		{
 			cout << "input:                   " << in << endl;
@@ -290,31 +399,7 @@ int main(int argc, char **argv)
 			cout << "max read in memory       "<< read_buffer<< " (reads)" << endl;
 		}
 	}
-	try
-	{
-		if(strcmp(in, out) == 0)
-				throw logic_error("in and out are the same file");
-		if(paired > 0)
-		{
-			if(strcmp(in, inpair) == 0)
-				throw logic_error("The two imput files are the same");
-			if(strcmp(out, outpair) == 0)
-				throw logic_error("The two output files are the same");
-			if(strcmp(inpair, outpair) == 0)
-				throw logic_error("inpair and outpair are the same file");
-			if(strcmp(in, outpair) == 0)
-				throw logic_error("in and outpair are the same file");
-			if(strcmp(inpair, out) == 0)
-				throw logic_error("inpair and out are the same file");
-			if(strcmp(inpair, outpair) == 0)
-				throw logic_error("in and out are the same file");
-		}
-	}
-	catch(exception const& e)
-	{
-		cerr << "ERROR : " << e.what() << endl;
-		exit(-1);
-	}
+
 	char *in_tmp = nullptr;
 	char *out_tmp = nullptr;
 	int number_of_lines = 0;

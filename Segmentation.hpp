@@ -38,8 +38,8 @@ private:
 	bool m_init;
 	Read* m_read;
 	double* m_proba;
-	int m_cut_begin = -1;
-	int m_cut_end = -1;
+	int m_cut_begin;
+	int m_cut_end;
 	double m_log_read;
 	double m_log_polyN;
 	char m_N;

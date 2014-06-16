@@ -41,6 +41,8 @@ Segmentation::Segmentation(Read* const read, bool estimate)
 
 Segmentation::Segmentation(Read* read, double &pG, double &pC, double &pA, double &pT, bool trimmed, int cut_begin, int cut_end)
 {
+	m_cut_begin = -1;
+	m_cut_end = -1;
 	m_init = true;
 	m_read = read;
 	m_proba = nullptr;
