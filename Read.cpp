@@ -566,7 +566,7 @@ void Read::init(igzstream &fin)
 inline void Read::writeRead()
 {
 	// we write the trimmed read if it's not just bad
-	if(m_trimmed && m_cut_end > 0 && m_cut_begin >= 0 && m_cut_begin != m_cut_end)
+	if(m_trimmed && m_cut_end - m_cut_begin > 0)
 	{
 		if(m_gziped)
 			writeRead(m_out_gz);
