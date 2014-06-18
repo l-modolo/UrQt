@@ -1,0 +1,30 @@
+Licence
+=======
+UrQt is licensed under the General Public License v3 (GPLv3).
+
+The last version of this document is available in the UrQt website:
+https://lbbe.univ-lyon1.fr/-UrQt-.html
+
+Installation Procedure :
+========================
+You can directly clone the UrQt git repository:
+	git clone git://dev.prabi.fr/UrQt
+
+or download the last version of UrQt: UrQt.1.0.16.tar.gz
+	wget ftp://pbil.univ-lyon1.fr/pub/logiciel/UrQt/UrQt.1.0.16.tar.gz
+	mkdir UrQt
+	tar xvzf UrQt.1.0.16.tar.gz -C UrQt
+	cd UrQt
+	make
+
+You can compile a static binary with the following commands:
+	make clean
+	make static
+
+You should have a UrQt binary in your folder.
+
+Precompiled binary are also available here.
+
+You may need to install zlib for UrQt to work/compile.
+For Ubuntu :
+	sudo apt-get install zlib1g-dev
