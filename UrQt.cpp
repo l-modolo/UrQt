@@ -156,7 +156,7 @@ int main(int argc, char **argv)
 		thread_number = 1;
 	// the only required argument is the blast file
 	if(in == nullptr || out == nullptr || help){
-		cout <<  "UrQt.1.0.16" << endl;
+		cout <<  "UrQt.1.0.17" << endl;
 		cout <<  "Argument must be defined." << endl;
 		cout <<  "Usage: " << argv[0] <<"--in <input.fastq> --out <output.fastq>" << endl;
 		cout <<  "       --in input fastq file" << endl;
@@ -230,6 +230,7 @@ int main(int argc, char **argv)
 				fout.close();
 				fout.clear();
 			}
+			remove(out_tmp);
 			delete[] out_tmp;
 			if(paired > 0) // if we work with paired files
 			{

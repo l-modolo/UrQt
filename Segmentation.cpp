@@ -18,6 +18,43 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "Segmentation.hpp"
 
+#define MAX_QUAL 45
+// Definition of the static stuff
+bool Segmentation::m_phred_computed = false;
+double* Segmentation::m_phred_classic = new double[MAX_QUAL];
+double* Segmentation::m_phred = new double[MAX_QUAL];
+
+void Segmentation::phred_compute(int threshold)
+{
+	if(!m_phred_computed)
+	{
+		double p_1 = ( ( 0.6931472 * pow(2.0, -1.0 ) ) / (double)(threshold) ) * (1.0/3.0 * (double)(MAX_QUAL - threshold)) + 0.5;
+		double j_scalled = -1;
+		for(int j = 1; j < MAX_QUAL; j++)
+		{
+			m_phred_classic[j-1] = 1.0 - pow(10.0,- ( (double)(j))/10.0);
+			if(threshold <= 8 || j <= threshold)
+			{
+				m_phred[j-1] = 1.0 - pow(2.0,- ( (double)(j))/threshold);
+			}
+			else
+			{
+				j_scalled = ((double)(j - threshold))/((double)(MAX_QUAL - threshold));
+				m_phred[j-1] = (1.0-j_scalled)*(1.0-j_scalled)*(1-j_scalled)*0.5 + 3.0 * (1.0-j_scalled)*(1.0-j_scalled) * j_scalled * p_1 + 3.0*(1.0-j_scalled) * j_scalled*j_scalled + j_scalled*j_scalled*j_scalled;
+			}
+		}
+		m_phred_computed = true;
+	}
+}
+
+double Segmentation::phred(int i, bool classic)
+{
+	if(classic)
+		return m_phred_classic[i-1];
+	else
+		return m_phred[i-1];
+}
+
 Segmentation::Segmentation(Read* const read, bool estimate)
 {
 	m_init = true;
@@ -68,14 +105,16 @@ void Segmentation::phred()
 		m_proba = new double[m_read->size()];
 		if(m_N == '?')
 		{
-			double coef = pow(2.0, 10.0/((double)(m_read->threshold())));
+			// double coef = pow(2.0, 10.0/((double)(m_read->threshold())));
 			for (int i = 0; i < m_read->size(); i++)
-				m_proba[i] = 1.0 - pow(coef,- ( (double)(m_read->phred(i)))/10.0);
+				m_proba[i] = phred(m_read->phred(i), false);
+				// m_proba[i] = 1.0 - pow(coef,- ( (double)(m_read->phred(i)))/10.0);
 		}
 		else
 		{
 			for (int i = 0; i < m_read->size(); i++)
-				m_proba[i] = 1.0 - pow(10.0,- ( (double)(m_read->phred(i)))/10.0);
+				m_proba[i] = phred(m_read->phred(i), true);
+				// m_proba[i] = 1.0 - pow(10.0,- ( (double)(m_read->phred(i)))/10.0);
 		}
 	}
 }

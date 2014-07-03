@@ -33,6 +33,7 @@ public:
 
 	void polyNtrim();
 	void polyNtrimEstimate();
+	static void phred_compute(int threshold);
 
 private:
 	bool m_init;
@@ -78,6 +79,12 @@ private:
 	// perform a size check in the read
 	bool size_check();
 
+	static bool m_phred_computed;
+	static double* m_phred_classic;
+	static double* m_phred;
+
+	static double phred(int i, bool classic);
+	
 };
 
 #endif
