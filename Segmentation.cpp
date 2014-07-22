@@ -29,17 +29,26 @@ void Segmentation::phred_compute(int threshold)
 	if(!m_phred_computed)
 	{
 		double j_scalled = -1.0;
-		for(int j = 1; j < MAX_QUAL; j++)
+		int threshold_scalled = max(threshold,20);
+		double p_0 = -1.0;
+		double p_1 = -1.0;
+		double phred = -1.0;
+		double phred_prime = -1.0;
+		for(int j = 1; j < (double)MAX_QUAL; j++)
 		{
 			m_phred_classic[j-1] = 1.0 - pow(10.0,- ( (double)(j))/10.0);
-			if(j <= threshold)
+			if(j <= threshold_scalled)
 			{
 				m_phred[j-1] = 1.0 - pow(2.0,- ( (double)(j))/threshold);
 			}
 			else
 			{
-				j_scalled = ((double)(j - threshold))/((double)(MAX_QUAL - threshold));
-				m_phred[j-1] = (1.0-j_scalled)*(1.0-j_scalled)*(1-j_scalled)*0.5 + 3.0 * (1.0-j_scalled)*(1.0-j_scalled) * j_scalled * min(( 0.3465736 / (double)(threshold) ) * (1.0/3.0 * (double)(MAX_QUAL - threshold)) + 0.5 ,1.0) + 3.0*(1.0-j_scalled) * j_scalled*j_scalled + j_scalled*j_scalled*j_scalled;
+				p_0 = 1.0 - pow(2.0,- (double)(threshold_scalled)/(double)(threshold));
+				phred = 1.0 - pow(2.0, - (double)(threshold_scalled)/(double)(threshold));
+				phred_prime = (0.6931472 * pow(2.0, - (double)(threshold_scalled) / (double)(threshold))) / (double)(threshold);
+				p_1 = phred_prime * ((1.0/3.0*(double)(MAX_QUAL-threshold_scalled) + (double)(threshold_scalled)) - (double)(threshold_scalled)) + p_0;
+				j_scalled = ((double)(j - threshold_scalled))/((double)(MAX_QUAL - threshold_scalled));
+				m_phred[j-1] = (1.0-j_scalled)*(1.0-j_scalled)*(1-j_scalled)*p_0 + 3.0*(1.0-j_scalled)*(1.0-j_scalled)*j_scalled*p_1 + 3.0*(1.0-j_scalled)*j_scalled*j_scalled + j_scalled*j_scalled*j_scalled;
 			}
 		}
 		m_phred_computed = true;
