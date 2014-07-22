@@ -28,19 +28,18 @@ void Segmentation::phred_compute(int threshold)
 {
 	if(!m_phred_computed)
 	{
-		double p_1 = ( ( 0.6931472 * pow(2.0, -1.0 ) ) / (double)(threshold) ) * (1.0/3.0 * (double)(MAX_QUAL - threshold)) + 0.5;
-		double j_scalled = -1;
+		double j_scalled = -1.0;
 		for(int j = 1; j < MAX_QUAL; j++)
 		{
 			m_phred_classic[j-1] = 1.0 - pow(10.0,- ( (double)(j))/10.0);
-			if(threshold <= 8 || j <= threshold)
+			if(j <= threshold)
 			{
 				m_phred[j-1] = 1.0 - pow(2.0,- ( (double)(j))/threshold);
 			}
 			else
 			{
 				j_scalled = ((double)(j - threshold))/((double)(MAX_QUAL - threshold));
-				m_phred[j-1] = (1.0-j_scalled)*(1.0-j_scalled)*(1-j_scalled)*0.5 + 3.0 * (1.0-j_scalled)*(1.0-j_scalled) * j_scalled * p_1 + 3.0*(1.0-j_scalled) * j_scalled*j_scalled + j_scalled*j_scalled*j_scalled;
+				m_phred[j-1] = (1.0-j_scalled)*(1.0-j_scalled)*(1-j_scalled)*0.5 + 3.0 * (1.0-j_scalled)*(1.0-j_scalled) * j_scalled * min(( 0.3465736 / (double)(threshold) ) * (1.0/3.0 * (double)(MAX_QUAL - threshold)) + 0.5 ,1.0) + 3.0*(1.0-j_scalled) * j_scalled*j_scalled + j_scalled*j_scalled*j_scalled;
 			}
 		}
 		m_phred_computed = true;
@@ -173,7 +172,7 @@ void Segmentation::polyNtrimEstimate()
 		double pC = 0.25;
 		double pA = 0.25;
 		double pT = 0.25;
-		double old_pG, old_pC, old_pA, old_pT;
+		// double old_pG, old_pC, old_pA, old_pT;
 		int iter = 0;
 
 		// we find the maximum likelihood cut point between a read segment and a polyN segment 
@@ -207,10 +206,10 @@ void Segmentation::polyNtrimEstimate()
 					}
 				}
 				newlogL = logL;
-				old_pG = pG;
-				old_pC = pC;
-				old_pA = pA;
-				old_pT = pT;
+				// old_pG = pG;
+				// old_pC = pC;
+				// old_pA = pA;
+				// old_pT = pT;
 				baseProba(pG, pC, pA, pT);
 				iter++;
 			}
@@ -244,10 +243,10 @@ void Segmentation::polyNtrimEstimate()
 					}
 				}
 				newlogL = logL;
-				old_pG = pG;
-				old_pC = pC;
-				old_pA = pA;
-				old_pT = pT;
+				// old_pG = pG;
+				// old_pC = pC;
+				// old_pA = pA;
+				// old_pT = pT;
 				baseProba(pG, pC, pA, pT);
 				iter++;
 			}

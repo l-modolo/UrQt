@@ -38,7 +38,8 @@ class mThread
 {
 	public:
 	mThread(int number);
-	mThread(int number, bool done_action, int job_number);
+	mThread(int number, bool done_action, int job_buffer);
+	mThread(int number, bool done_action, int job_buffer, int job_to_get);
 	~mThread();
 	
 	void stop();
@@ -46,6 +47,7 @@ class mThread
 	
 	protected:
 	void run(mThreadWaiting<T>* todo, mThreadDone<T>* done);
+	void run_number(mThreadWaiting<T>* todo, mThreadDone<T>* done, int job_to_get);
 
 	bool mThread_done_task;
 	bool mThread_stop;
@@ -75,6 +77,18 @@ mThread<T>::mThread(int number, bool done_action, int job_buffer) : mThread_wait
 	for(int i = 0; i < number; i++)
 		mThread_running.push_back( thread(&mThread<T>::run, this, &mThread_waiting, &mThread_done) );
 }
+
+// we create a list of number thread ready to run and number*10 thread_waiting to
+// pileup the jobs to do by those threads
+template <typename T>
+mThread<T>::mThread(int number, bool done_action, int job_buffer, int job_to_get) : mThread_waiting(number*job_buffer), mThread_done(number*job_buffer*4)
+{
+	mThread_stop = false;
+	mThread_done_task = true;
+	for(int i = 0; i < number; i++)
+		mThread_running.push_back( thread(&mThread<T>::run_number, this, &mThread_waiting, &mThread_done, job_to_get) );
+}
+
 
 // we create a list of number thread ready to run and number*10 thread_waiting to
 // pileup the jobs to do by those threads
@@ -116,6 +130,38 @@ void mThread<T>::run(mThreadWaiting<T>* todo, mThreadDone<T>* done)
 	// {
 	// 	cerr << "ERROR : " << e.what() << " in : void mThreadRunning<T>::thread_run()" << endl;
 	// }
+}
+
+template <typename T>
+void mThread<T>::run_number(mThreadWaiting<T>* todo, mThreadDone<T>* done, int job_to_get)
+{
+		T** mThread_task = new T*[job_to_get];
+		int* mThread_task_number = new int[job_to_get];
+		bool running = true;
+		do
+		{
+			for(int i = 0; i < job_to_get; i++)
+			{
+				mThread_task[i] = nullptr;
+				mThread_task_number[i] = -1;
+			}
+			todo->get(&mThread_task, &mThread_task_number, job_to_get); // Thread_todo->get() is supposed to block until todo is not empty	
+			int i = 0;
+			while(i < job_to_get && mThread_task[i] != nullptr)
+			{
+				mThread_task[i]->run();
+				if(mThread_done_task)
+					done->add(mThread_task[i], mThread_task_number); // we add the object mThread_task to the done list to execute the 'mThread_task.done()' and its position in the list
+				else
+					delete mThread_task[i];
+				i++;
+			}
+			if(mThread_task[i] == nullptr)
+				running = false;
+		}
+		while(running);
+		delete[] mThread_task;
+		delete[] mThread_task_number;
 }
 
 // add a jobs to the job waiting list

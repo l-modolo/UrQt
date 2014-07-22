@@ -40,6 +40,7 @@ class mThreadWaiting
 	
 	void add(T* x);
 	void get(T** x, int* number);
+	void get(T*** x, int* number, int job_to_get);
 	
 	void stop();
 
@@ -137,6 +138,27 @@ void mThreadWaiting<T>::get(T** x, int* number)
 		while(!can_get())
 			mThreadWaiting_empty_cond.wait(empty); // if the list in empty we wait
 		*x = pop_front(number); // when there is a job we get it
+	// }
+	// catch(exception const& e)
+	// {
+	// 	cerr << "ERROR : " << e.what() << " in : T mThreadWaiting<T>::get()" << endl;
+	// 	exit(-1);
+	// }
+}
+
+// we load the job_to_get next jobs
+template<typename T>
+void mThreadWaiting<T>::get(T*** x, int* number, int job_to_get)
+{
+	// try
+	// {
+		unique_lock<mutex> empty(mThreadWaiting_empty);
+		for(int i; i < job_to_get; i++)
+		{
+			while(!can_get())
+				mThreadWaiting_empty_cond.wait(empty); // if the list in empty we wait
+			*x = pop_front(number); // when there is a job we get it
+		}
 	// }
 	// catch(exception const& e)
 	// {
