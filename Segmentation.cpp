@@ -21,46 +21,46 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define MAX_QUAL 45
 // Definition of the static stuff
 bool Segmentation::m_phred_computed = false;
-double* Segmentation::m_phred_classic = new double[MAX_QUAL];
 double* Segmentation::m_phred = new double[MAX_QUAL];
 
-void Segmentation::phred_compute(int threshold)
+void Segmentation::phred_compute(int threshold, bool classic)
 {
 	if(!m_phred_computed)
 	{
-		double j_scalled = -1.0;
-		int threshold_scalled = max(threshold,20);
-		double p_0 = -1.0;
-		double p_1 = -1.0;
-		double phred = -1.0;
-		double phred_prime = -1.0;
-		for(int j = 1; j < (double)MAX_QUAL; j++)
+		if(classic)
 		{
-			m_phred_classic[j-1] = 1.0 - pow(10.0,- ( (double)(j))/10.0);
-			if(j <= threshold_scalled)
+			for(int j = 1; j < (double)MAX_QUAL; j++)
 			{
-				m_phred[j-1] = 1.0 - pow(2.0,- ( (double)(j))/threshold);
+				m_phred[j-1] = 1.0 - pow(10.0,- ( (double)(j))/10.0);
 			}
-			else
+		}
+		else
+		{
+			double j_scalled = -1.0;
+			int threshold_scalled = max(threshold,20);
+			double p_0 = -1.0;
+			double p_1 = -1.0;
+			double phred = -1.0;
+			double phred_prime = -1.0;
+			for(int j = 1; j < (double)MAX_QUAL; j++)
 			{
-				p_0 = 1.0 - pow(2.0,- (double)(threshold_scalled)/(double)(threshold));
-				phred = 1.0 - pow(2.0, - (double)(threshold_scalled)/(double)(threshold));
-				phred_prime = (0.6931472 * pow(2.0, - (double)(threshold_scalled) / (double)(threshold))) / (double)(threshold);
-				p_1 = phred_prime * ((1.0/3.0*(double)(MAX_QUAL-threshold_scalled) + (double)(threshold_scalled)) - (double)(threshold_scalled)) + p_0;
-				j_scalled = ((double)(j - threshold_scalled))/((double)(MAX_QUAL - threshold_scalled));
-				m_phred[j-1] = (1.0-j_scalled)*(1.0-j_scalled)*(1-j_scalled)*p_0 + 3.0*(1.0-j_scalled)*(1.0-j_scalled)*j_scalled*p_1 + 3.0*(1.0-j_scalled)*j_scalled*j_scalled + j_scalled*j_scalled*j_scalled;
+				if(j <= threshold_scalled)
+				{
+					m_phred[j-1] = 1.0 - pow(2.0,- ( (double)(j))/threshold);
+				}
+				else
+				{
+					p_0 = 1.0 - pow(2.0,- (double)(threshold_scalled)/(double)(threshold));
+					phred = 1.0 - pow(2.0, - (double)(threshold_scalled)/(double)(threshold));
+					phred_prime = (0.6931472 * pow(2.0, - (double)(threshold_scalled) / (double)(threshold))) / (double)(threshold);
+					p_1 = phred_prime * ((1.0/3.0*(double)(MAX_QUAL-threshold_scalled) + (double)(threshold_scalled)) - (double)(threshold_scalled)) + p_0;
+					j_scalled = ((double)(j - threshold_scalled))/((double)(MAX_QUAL - threshold_scalled));
+					m_phred[j-1] = (1.0-j_scalled)*(1.0-j_scalled)*(1-j_scalled)*p_0 + 3.0*(1.0-j_scalled)*(1.0-j_scalled)*j_scalled*p_1 + 3.0*(1.0-j_scalled)*j_scalled*j_scalled + j_scalled*j_scalled*j_scalled;
+				}
 			}
 		}
 		m_phred_computed = true;
 	}
-}
-
-double Segmentation::phred(int i, bool classic)
-{
-	if(classic)
-		return m_phred_classic[i-1];
-	else
-		return m_phred[i-1];
 }
 
 Segmentation::Segmentation(Read* const read, bool estimate)
@@ -111,19 +111,8 @@ void Segmentation::phred()
 	if(m_init)
 	{
 		m_proba = new double[m_read->size()];
-		if(m_N == '?')
-		{
-			// double coef = pow(2.0, 10.0/((double)(m_read->threshold())));
-			for (int i = 0; i < m_read->size(); i++)
-				m_proba[i] = phred(m_read->phred(i), false);
-				// m_proba[i] = 1.0 - pow(coef,- ( (double)(m_read->phred(i)))/10.0);
-		}
-		else
-		{
-			for (int i = 0; i < m_read->size(); i++)
-				m_proba[i] = phred(m_read->phred(i), true);
-				// m_proba[i] = 1.0 - pow(10.0,- ( (double)(m_read->phred(i)))/10.0);
-		}
+		for (int i = 0; i < m_read->size(); i++)
+			m_proba[i] = m_phred[i-1];
 	}
 }
 

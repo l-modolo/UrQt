@@ -396,8 +396,6 @@ void Read::constructor(igzstream &fin,char* N, int phred_score, int threshold, i
 
 	if(line < 4)
 		m_init = false;
-
-	Segmentation::phred_compute(m_threshold);
 }
 
 Read::~Read()

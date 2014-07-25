@@ -585,6 +585,10 @@ int main(int argc, char **argv)
 	char *in_tmp = nullptr;
 	char *out_tmp = nullptr;
 	int number_of_lines = 0;
+	if(N != '?')
+		Segmentation::phred_compute(threshold, true);
+	else
+		Segmentation::phred_compute(threshold, false);
 	while(paired >=0 && paired <= 2)
 	{
 		igzstream fin;
