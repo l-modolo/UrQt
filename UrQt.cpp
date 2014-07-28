@@ -186,6 +186,7 @@ int main(int argc, char **argv)
 		cout <<  "       --v verbose" << endl;
 		cout <<  "       --gz gziped output" << endl;
 		cout <<  "       --m <number> number of thread to use" << endl;
+		cout <<  "       --buffer <buffer> max number of reads in memory" << endl;
 		return -1;
 	}
 	else

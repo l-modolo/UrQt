@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #ifndef DEF_Segmentation
 #define DEF_Segmentation
+#define MAX_QUAL 45
 
 #include "Read.hpp"
 using namespace std;
@@ -80,7 +81,7 @@ private:
 	bool size_check();
 
 	static bool m_phred_computed;
-	static double* m_phred;
+	static double m_phred[MAX_QUAL-1];
 };
 
 #endif
