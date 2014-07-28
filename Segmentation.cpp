@@ -181,7 +181,6 @@ void Segmentation::polyNtrimEstimate()
 
 		m_cut_begin = m_read->start();
 		m_cut_end = m_read->stop()-1;
-
 		if((m_read->strand() == 0 || m_read->strand() == 2) && m_read->max_tail_trim() != m_read->stop()) // we find the cut point for a poly N tail
 		{
 			iter = 0;
