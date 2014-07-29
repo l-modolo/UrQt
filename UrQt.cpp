@@ -60,7 +60,7 @@ int main(int argc, char **argv)
 	int min_read_size = 0;
 	int thread_number = 1;
 	int sampling = 0;
-	int threshold = 5;
+	int threshold = 10;
 	bool estimation = true;
 	bool remove_empty_reads = true;
 	int paired = 0;
@@ -353,7 +353,7 @@ int main(int argc, char **argv)
 				cout << "good quality above:      " << threshold << " (phred)" << endl;
 			}
 			if(N != '?')
-				cout << "remove ployN at:         ";
+				cout << "remove polyN at:         ";
 			else
 				cout << "remove by QC at:         ";
 		}
@@ -389,7 +389,7 @@ int main(int argc, char **argv)
 				cout << "read to sample:          " << sampling << " (reads)" << endl;
 			cout << "probability estimation:  ";
 			if(estimation)
-				cout << "for each reads" << endl;
+				cout << "for each read" << endl;
 			else
 			{
 				if(sampling > 0)
