@@ -10,10 +10,10 @@ Installation Procedure :
 You can directly clone the UrQt git repository:
 	git clone git://dev.prabi.fr/UrQt
 
-or download the last version of UrQt: UrQt.1.0.16.tar.gz
-	wget ftp://pbil.univ-lyon1.fr/pub/logiciel/UrQt/UrQt.1.0.16.tar.gz
+or download the last version of UrQt: UrQt.1.0.17.tar.gz
+	wget ftp://pbil.univ-lyon1.fr/pub/logiciel/UrQt/UrQt.1.0.17.tar.gz
 	mkdir UrQt
-	tar xvzf UrQt.1.0.16.tar.gz -C UrQt
+	tar xvzf UrQt.1.0.17.tar.gz -C UrQt
 	cd UrQt
 	make
 

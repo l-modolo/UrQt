@@ -88,7 +88,7 @@ int main(int argc, char **argv)
 		{"v", no_argument, 0, 'h'},
 		{"s", required_argument, 0, 'i'},
 		{"S", no_argument, 0, 'j'},
-		{"r", required_argument, 0, 'n'},
+		{"r", no_argument, 0, 'n'},
 		{"R", required_argument, 0, 'k'},
 		{"min_QC_length", required_argument, 0, 'l'},
 		{"min_QC_phred", required_argument, 0, 'm'},
@@ -101,8 +101,9 @@ int main(int argc, char **argv)
 		{"urqt", no_argument, 0, 'x'},
 		{nullptr, 0, 0, 0}
 	};
-	
+
 	while ((c = getopt_long_only(argc, argv, "a:b:c:d:e:f:g:i:j:k:l:m:n:o:p:q:r:s:t:u:v:w:x", long_options, &option_index)) != -1) {
+		int optnumber = optind;
 		switch(c)
 		{
 			case 'a': in = optarg;
@@ -153,14 +154,18 @@ int main(int argc, char **argv)
 			break;
 			case 'x': ascii_logo = true;
 			break;
-			default : cout <<  "without argument : " << optopt << endl;
+			case '?':
+				help = true;
+			break;
+			default : cout <<  "ERROR: without argument : " << optopt << endl;
 		}
+		optnumber++;
 	}
 	if (thread_number < 0)
 		thread_number = 1;
 	// the only required argument is the blast file
 	if(in == nullptr || out == nullptr || help){
-		cout <<  "UrQt.1.0.17" << endl;
+		cout <<  "UrQt.1.0.18" << endl;
 		cout <<  "Argument must be defined." << endl;
 		cout <<  "Usage: " << argv[0] <<"--in <input.fastq> --out <output.fastq>" << endl;
 		cout <<  "       --in input fastq file" << endl;
