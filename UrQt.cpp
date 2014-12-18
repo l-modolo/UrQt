@@ -60,7 +60,7 @@ int main(int argc, char **argv)
 	int min_read_size = 0;
 	int thread_number = 1;
 	int sampling = 0;
-	int threshold = 10;
+	int threshold = 20;
 	bool estimation = true;
 	bool remove_empty_reads = true;
 	int paired = 0;
@@ -175,7 +175,7 @@ int main(int argc, char **argv)
 		cout <<  "       --outpair output fastq file for paired end data, empty read in one file will be removed in both" << endl;
 		cout <<  "       --phred <number> [33 = Sanger (ASCII 33 to 126), 64 = Illumina 1.3 (ASCII 64 to 126), 59 = Solexa/Illumina 1.0 (ASCII 59 to 126)] (default: 33)" << endl;
 		cout <<  "    Trimming option:" << endl;
-		cout <<  "       --t <number>  minimum phred score for a ``good quality'' (default: 5)" << endl;
+		cout <<  "       --t <number>  minimum phred score for a ``good quality'' (default: 20)" << endl;
 		cout <<  "       --N <character>  polyN to trim (default: QC trimming)" << endl;
 		cout <<  "       --max_head_trim <number> maximum number of nucleotide trimmed at the head of the reads (default: read length)" << endl;
 		cout <<  "       --max_tail_trim <number> maximum number of nucleotide trimmed at the tail of the reads (default: read length)" << endl;

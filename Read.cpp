@@ -343,24 +343,31 @@ void Read::constructor(igzstream &fin,char* N, int phred_score, int threshold, i
 	m_log_read = log(0.0);
 	m_log_polyN = log(0.0);
 	int line = 1;
-	while(!fin.eof() && fin.good() && line <= 4)
-	{
-		switch(line)
+	try{
+		while(!fin.eof() && fin.good() && line <= 4)
 		{
-			case 1:
-				getline(fin, m_name);
-			break;
-			case 2:
-				getline(fin, m_seq);
-			break;
-			case 3:
-				getline(fin, m_phred);
-			break;
-			case 4:
-				getline(fin, m_phred);
-			break;
+			switch(line)
+			{
+				case 1:
+					getline(fin, m_name);
+				break;
+				case 2:
+					getline(fin, m_seq);
+				break;
+				case 3:
+					getline(fin, m_phred);
+				break;
+				case 4:
+					getline(fin, m_phred);
+				break;
+			}
+			line++;
 		}
-		line++;
+	}
+	catch(exception const& e)
+	{
+		cerr << "FILE FORMAT ERROR : " << e.what() << endl;
+		exit(-1);
 	}
 	m_size = m_seq.length();
 	if(!m_phred_score_set)
