@@ -28,3 +28,18 @@ Precompiled binary are also available here.
 You may need to install zlib for UrQt to work/compile.
 For Ubuntu :
 	sudo apt-get install zlib1g-dev
+
+Galaxy Installation Procedure :
+===============================
+With GALAYX_PATH the path to your galaxy distribution (getgalaxy.org) and after the compilation of UrQt.
+You UrQt as a galaxy tools with the following commands :
+    mkdir GALAXY_PATH/tools/UrQt
+    cp UrQt UrQt.xml GALAXY_PATH/tools/UrQt/
+
+and by appening the following line in a relevent section of the file GALAXY_PATH/config/tool_conf.xml :
+    <tool file="UrQt/UrQt.xml" />
+
+Then restart the galaxy server
+
+
+You can edit the line 5 of the file UrQt.xml to adjust the number of core to use. Any modification to this file requiere a restart of the galaxy server.
