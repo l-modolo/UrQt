@@ -1,6 +1,64 @@
 # UrQt
 UrQt an efficient software for NGS data quality trimming
 
+# Licence
+
+UrQt is licensed under the General Public License v3 (GPLv3).
+The last version of this document is available in the UrQt website:
+https://lbbe.univ-lyon1.fr/-UrQt-.html
+
+# Installation Procedure :
+
+You can directly clone the UrQt git repository:
+```sh
+git clone https://github.com/l-modolo/UrQt
+```
+or download the last version of UrQt: UrQt.1.0.17.tar.gz
+```sh
+wget ftp://pbil.univ-lyon1.fr/pub/logiciel/UrQt/UrQt.1.0.17.tar.gz
+mkdir UrQt
+tar xvzf UrQt.1.0.17.tar.gz -C UrQt
+```
+
+then compile it
+```sh
+cd UrQt
+make
+```
+You can compile a static binary with the following commands:
+```sh
+make clean
+make static
+```
+
+You should have a UrQt binary in your folder.
+Precompiled binary are also available [here](ftp://pbil.univ-lyon1.fr/pub/logiciel/UrQt/bin/).
+
+You may need to install zlib for UrQt to work/compile.
+For Ubuntu :
+```sh
+sudo apt-get install zlib1g-dev
+```
+
+
+# Galaxy Installation Procedure :
+
+With `GALAYX_PATH` the path to your [galaxy distribution](https://wiki.galaxyproject.org/Admin/GetGalaxy) and after the compilation of UrQt.
+
+You can install UrQt as a galaxy tools with the following commands :
+```sh
+mkdir GALAXY_PATH/tools/UrQt
+cp UrQt UrQt.xml GALAXY_PATH/tools/UrQt/
+```
+
+and by appening the following line in a relevent section of the file `GALAXY_PATH/config/tool_conf.xml` :
+```xml
+<tool file="UrQt/UrQt.xml" />
+```
+
+Then restart the galaxy server
+You can edit the line 5 of the file UrQt.xml to adjust the number of core to use. Any modification to this file requiere a restart of the galaxy server.
+
 # Documentation
 
 The last version of the documentation is available in the UrQt website:

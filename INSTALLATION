@@ -32,7 +32,7 @@ For Ubuntu :
 Galaxy Installation Procedure :
 ===============================
 With GALAYX_PATH the path to your galaxy distribution (getgalaxy.org) and after the compilation of UrQt.
-You UrQt as a galaxy tools with the following commands :
+You can install UrQt as a galaxy tools with the following commands :
     mkdir GALAXY_PATH/tools/UrQt
     cp UrQt UrQt.xml GALAXY_PATH/tools/UrQt/
 
