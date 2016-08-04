@@ -385,7 +385,7 @@ void Read::constructor(igzstream &fin,char* N, int phred_score, int threshold, i
 	else
 		m_max_tail_trim = 0;
 	m_min_read_size = min_read_size;
-	if(m_min_read_size > m_size || m_min_read_size < 0)
+	if(m_min_read_size < 0)
 		m_min_read_size = 0;
 	m_N = toupper(*N);
 	m_remove_empty_reads = remove_empty_reads;
