@@ -228,14 +228,14 @@ void Read::writeFinal(queue<int> m_paired_pos, char* out, ez::ezRateProgressBar<
 	int next_read_to_skip = 0;
 	if(!m_paired_pos_1.empty())
 	{
-		next_read_to_skip = m_paired_pos_1.front();
+		next_read_to_skip = m_paired_pos.front();
 		m_paired_pos_1.pop();
 	}
 	string name, seq, phred;
 	name.reserve(2048);
 	seq.reserve(2048);
 	phred.reserve(2048);
-	
+
 	while(!fin.eof() && fin.good())
 	{
 		// reading of read
@@ -277,7 +277,7 @@ void Read::writeFinal(queue<int> m_paired_pos, char* out, ez::ezRateProgressBar<
 			}
 			else
 			{
-				next_read_to_skip = m_paired_pos_1.front();
+				next_read_to_skip = m_paired_pos.front();
 				m_paired_pos_1.pop();
 			}
 		}
@@ -372,7 +372,7 @@ void Read::constructor(igzstream &fin,char* N, int phred_score, int threshold, i
 	m_size = m_seq.length();
 	if(!m_phred_score_set)
 		m_phred_score = phred_score;
-	
+
 	m_threshold = threshold;
 	m_start = 0;
 	m_stop = m_size;
