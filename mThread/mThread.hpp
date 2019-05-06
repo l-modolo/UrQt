@@ -36,24 +36,24 @@ using namespace std;
 template <typename T>
 class mThread
 {
-	public:
-	mThread(int number);
-	mThread(int number, bool done_action, int job_buffer);
-	mThread(int number, bool done_action, int job_buffer, int job_to_get);
-	~mThread();
+  public:
+  mThread(int number);
+  mThread(int number, bool done_action, int job_buffer);
+  mThread(int number, bool done_action, int job_buffer, int job_to_get);
+  ~mThread();
 
-	void stop();
-	void add(T*);
+  void stop();
+  void add(T*);
 
-	protected:
-	void run(mThreadWaiting<T>* todo, mThreadDone<T>* done);
-	void run_number(mThreadWaiting<T>* todo, mThreadDone<T>* done, int job_to_get);
+  protected:
+  void run(mThreadWaiting<T>* todo, mThreadDone<T>* done);
+  void run_number(mThreadWaiting<T>* todo, mThreadDone<T>* done, int job_to_get);
 
-	bool mThread_done_task;
-	bool mThread_stop;
-	mThreadWaiting<T> mThread_waiting;
-	mThreadDone<T> mThread_done;
-	vector< thread > mThread_running;
+  bool mThread_done_task;
+  bool mThread_stop;
+  mThreadWaiting<T> mThread_waiting;
+  mThreadDone<T> mThread_done;
+  vector< thread > mThread_running;
 };
 
 // we create a list of number thread ready to run and number*10 thread_waiting to

@@ -29,29 +29,29 @@ using namespace std;
 template <typename T>
 class mThreadCircular
 {
-	public:
-	mThreadCircular();
-	~mThreadCircular();
-	void init(int size);
+  public:
+  mThreadCircular();
+  ~mThreadCircular();
+  void init(int size);
 
-	void add(T* x, int number);
-	T* pop();
-	T* pop(int* number);
-	inline bool can_add(int number);
-	inline bool can_get();
-	inline int size();
-	void print();
+  void add(T* x, int number);
+  T* pop();
+  T* pop(int* number);
+  inline bool can_add(int number);
+  inline bool can_get();
+  inline int size();
+  void print();
 
-	private:
-	bool C_init;
-	int C_size;
-	T** C_loop;
-	int* C_number;
-	int C_filled;
-	int C_start;
-	int C_stop;
-	int C_expected_start_number;
-	mutex C_onebyone;
+  private:
+  bool C_init;
+  int C_size;
+  T** C_loop;
+  int* C_number;
+  int C_filled;
+  int C_start;
+  int C_stop;
+  int C_expected_start_number;
+  mutex C_onebyone;
 };
 
 // initialization of the Circular container
