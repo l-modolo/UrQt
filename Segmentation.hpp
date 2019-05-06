@@ -54,7 +54,7 @@ private:
 
 	// compute the probability to have the right base
 	void phred();
-	
+
 	// in a read the probability of observing one of the four bases is roughly the same
 	// for each base we use the probability of being the right base
 	inline double read(int begin, int end);
@@ -74,7 +74,7 @@ private:
 	inline double probaBaseDict(char base, double proba, double pG, double pC, double pA, double pT);
 	inline void numberBaseDict(char base, double proba, double &G_number, double &C_number, double &A_number, double &T_number);
 
-	// perform a quality check in the read, if it was constructed with the correct argument 
+	// perform a quality check in the read, if it was constructed with the correct argument
 	bool QC_check();
 
 	// perform a size check in the read
