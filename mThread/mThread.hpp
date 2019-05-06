@@ -200,7 +200,7 @@ void mThread<T>::stop()
     // we signal the jobs waiting that we wont add new jobs
     mThread_waiting.stop();
     // we wait for each jobs to finish
-    for(int i = 0; i < mThread_running.size(); i++)
+    for(int i = 0; i < (int) mThread_running.size(); i++)
         (mThread_running.at(i)).join();
     mThread_done.stop();
     mThread_done.join();

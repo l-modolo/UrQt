@@ -213,13 +213,12 @@ inline bool mThreadCircular<T>::can_add(int number)
     int pos = number%C_size;
     if(C_number[pos] == -1 && number - C_expected_start_number < C_size)
       return true;
-    else
-      return false;
   }
   catch(exception const& e)
   {
     cerr << "ERROR : " << e.what() << " in : bool mThreadCircular<T>::can_add()" << endl;
   }
+  return false;
 }
 
 template<typename T>
@@ -233,12 +232,12 @@ inline bool mThreadCircular<T>::can_get()
 
     if(C_filled > 0 && C_number[C_start] != -1)
       return true;
-    return false;
   }
   catch(exception const& e)
   {
     cerr << "ERROR : " << e.what() << " in : bool mThreadCircular<T>::can_get()" << endl;
   }
+  return false;
 }
 
 template<typename T>
@@ -255,6 +254,7 @@ inline int mThreadCircular<T>::size()
   {
     cerr << "ERROR : " << e.what() << " in : int mThreadCircular<T>::size()" << endl;
   }
+  return 0;
 }
 
 
