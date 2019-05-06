@@ -40,9 +40,9 @@ Done |  Elapsed | Remaining | Processed | Unprocessed | Rate
 template <typename T>
 class ezRateProgressBar {
 public:
-  ezRateProgressBar(T _n=0) : n(_n), pct(0), cur(0), unitsWidth(0), width(0), done(0) {}
+  ezRateProgressBar(T _n=0) : n(_n), cur(0), done(0), pct(0), width(0), unitsWidth(0) {}
   void reset() { pct = 0; cur = 0; done = 0; }
-  void start() { 
+  void start() {
     #ifdef WIN32
       assert(QueryPerformanceFrequency(&g_llFrequency) != 0);
     #endif
@@ -62,7 +62,7 @@ public:
       str = stm.str();
     }
   }
-  
+
   // http://stackoverflow.com/questions/3283804/c-get-milliseconds-since-some-date
   long long osQueryPerfomance() {
   #ifdef WIN32
@@ -84,7 +84,6 @@ public:
     // Compute how many max characters 'n' would take when formatted.
     std::string str;
     commaNumber(n, str);
-    int i;
     // Width of "123,456".
     int nWidth = str.size();
     unitsWidth = strlen(units);
@@ -95,20 +94,20 @@ public:
       procColWidth = nUnitsWidth;
     else
       procColWidth = 9;
-    
+
     if (nUnitsWidth > 11)
       unprocColWidth = nUnitsWidth;
     else
       unprocColWidth = 11;
 
-    out.append(procColWidth-9, ' ');    
+    out.append(procColWidth-9, ' ');
     out.append("Processed | ");
-    out.append(unprocColWidth-11, ' ');      
+    out.append(unprocColWidth-11, ' ');
     out.append("Unprocessed | Rate\n");
-    
+
     printf("%s", out.c_str());
   }
-  
+
   void secondsToString(unsigned int t, std::string & out) {
     unsigned int days = t/86400;
     unsigned int sec = t-days*86400;
@@ -121,14 +120,14 @@ public:
     out.clear();
     sprintf(tmp, "%02u:", hours);
     out.append(tmp);
-  
+
     sprintf(tmp, "%02u:", mins);
     out.append(tmp);
-    
+
     sprintf(tmp, "%02u", sec);
     out.append(tmp);
   }
-  
+
   void operator++() {
     update( cur++ );
   };
@@ -143,7 +142,7 @@ public:
     // Nothing to update if already maxed out.
     if (done) return;
     endTime = osQueryPerfomance();
-    
+
     // Abort if at least 1 second didn't elapse, unless newvalue will get us to 100%.
     if ( ((endTime-prevTime)/1000000.0 < 1.0) && (newvalue < n) ) return;
     prevTime = endTime;
@@ -182,7 +181,7 @@ public:
       out.append(" ");
       out.append(units);
       out.append("/s");
-      
+
       newwidth = out.size();
       if (newwidth < width)
         out.append(width-newwidth,' ');
@@ -227,12 +226,12 @@ public:
       out.append(tstr);
       out.append(" ");
       out.append(units);
-      out.append("/s");    
+      out.append("/s");
       // Pad end with spaces to overwrite previous string that may have been longer.
       newwidth = out.size();
       if (newwidth < width)
         out.append(width-newwidth,' ');
-        
+
       width = newwidth;
       out.append("\r");
       printf("%s", out.c_str());
