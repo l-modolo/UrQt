@@ -57,37 +57,37 @@ class mThreadRunning
 template <typename T>
 mThreadRunning<T>::mThreadRunning() : mThread_thread(&mThreadRunning<T>::run, this, mThreadWaiting<T>* todo, mThreadDone<T>* done)
 {
-	// if (todo != nullptr)
-	// {
-	// 	mThread_todo = todo;
-	// 	mThread_done = done;
-	// 	mThread_task = nullptr;
-	// 	mThread_task_number = -1;
-	// 	// try
-	// 	// {
-	// 	// 	mThread_thread = thread( &mThreadRunning<T>::run, this);
-	// 	// 	cout << "New thread" << endl;
-	// 	// }
-	// 	// catch(exception const& e)
-	// 	// {
-	// 	// 	cerr << "ERROR : " << e.what() << " mThreadRunning<T>::mThreadRunning(mThreadWaiting<T>* todo, mThreadDone<T>* done)" << endl;
-	// 	// }
-	// }
-	// else
-	// 	throw logic_error("mThreadRunning need a mThreadWaiting and a mThreadDone list");
+  // if (todo != nullptr)
+  // {
+  // 	mThread_todo = todo;
+  // 	mThread_done = done;
+  // 	mThread_task = nullptr;
+  // 	mThread_task_number = -1;
+  // 	// try
+  // 	// {
+  // 	// 	mThread_thread = thread( &mThreadRunning<T>::run, this);
+  // 	// 	cout << "New thread" << endl;
+  // 	// }
+  // 	// catch(exception const& e)
+  // 	// {
+  // 	// 	cerr << "ERROR : " << e.what() << " mThreadRunning<T>::mThreadRunning(mThreadWaiting<T>* todo, mThreadDone<T>* done)" << endl;
+  // 	// }
+  // }
+  // else
+  // 	throw logic_error("mThreadRunning need a mThreadWaiting and a mThreadDone list");
 }
 
 template <typename T>
 mThreadRunning<T>::~mThreadRunning()
 {
-	try
-	{
+  try
+  {
     mThread_thread.join();
-	}
-	catch(exception const& e)
-	{
-		cerr << "ERROR : " << e.what() << " in : void mThreadRunning<T>::~mThreadRunning()" << endl;
-	}
+  }
+  catch(exception const& e)
+  {
+    cerr << "ERROR : " << e.what() << " in : void mThreadRunning<T>::~mThreadRunning()" << endl;
+  }
 }
 
 template <typename T>
