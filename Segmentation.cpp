@@ -174,7 +174,7 @@ void Segmentation::polyNtrimEstimate()
 		// double old_pG, old_pC, old_pA, old_pT;
 		int iter = 0;
 
-		// we find the maximum likelihood cut point between a read segment and a polyN segment 
+		// we find the maximum likelihood cut point between a read segment and a polyN segment
 		double logL = log(0.0);
 		double newlogL = 1.0;
 		double oldlogL = 0.0;
@@ -187,7 +187,7 @@ void Segmentation::polyNtrimEstimate()
 			logL = log(0.0);
 			newlogL = 1.0;
 			oldlogL = 0.0;
-			while( labs(newlogL - oldlogL) > 0.01 && iter < 100)
+			while( abs(newlogL - oldlogL) > 0.01 && iter < 100)
 			{
 				m_log_read = 0.0;
 				m_log_polyN = 0.0;
@@ -224,7 +224,7 @@ void Segmentation::polyNtrimEstimate()
 			pC = 0.25;
 			pA = 0.25;
 			pT = 0.25;
-			while( labs(newlogL - oldlogL) > 0.01 && iter < 100 )
+			while( abs(newlogL - oldlogL) > 0.01 && iter < 100 )
 			{
 				m_log_read = 0.0;
 				m_log_polyN = 0.0;
@@ -555,25 +555,25 @@ inline void Segmentation::numberBaseDict(char base, double proba, double &G_numb
 {
 	switch((char)toupper(base))
 	{
-		case 'G' : 
+		case 'G' :
 			G_number += proba;
 			C_number += (1-proba)/3.0;
 			A_number += (1-proba)/3.0;
 			T_number += (1-proba)/3.0;
 		break;
-		case 'C' : 
+		case 'C' :
 			C_number += proba;
 			G_number += (1-proba)/3.0;
 			A_number += (1-proba)/3.0;
 			T_number += (1-proba)/3.0;
 		break;
-		case 'A' : 
+		case 'A' :
 			A_number += proba;
 			G_number += (1-proba)/3.0;
 			C_number += (1-proba)/3.0;
 			T_number += (1-proba)/3.0;
 		break;
-		case 'T' : 
+		case 'T' :
 			T_number += proba;
 			G_number += (1-proba)/3.0;
 			C_number += (1-proba)/3.0;
