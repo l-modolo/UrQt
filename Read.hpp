@@ -48,14 +48,14 @@ class Segmentation;
 class Read
 {
 public:
-	Read(igzstream &fin, char* N, int phred_score, int threshold, int max_head_trim, int max_tail_trim, int min_read_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, int strand_bit);
-	Read(igzstream &fin, char* out, bool gziped, char* N, int phred_score, int threshold, int max_head_trim, int max_tail_trim, int min_read_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, int paired, int strand_bit);
-	Read(igzstream &fin, char* out, bool gziped, char* N, int phred_score, int threshold, int max_head_trim, int max_tail_trim, int min_read_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, bool estimation, int paired, int strand_bit);
-	inline void constructor(igzstream &fin,char* N, int phred_score, int threshold, int max_head_trim, int max_tail_trim, int min_read_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, int strand_bit);
+	Read(mfem::igzstream &fin, char* N, int phred_score, int threshold, int max_head_trim, int max_tail_trim, int min_read_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, int strand_bit);
+	Read(mfem::igzstream &fin, char* out, bool gziped, char* N, int phred_score, int threshold, int max_head_trim, int max_tail_trim, int min_read_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, int paired, int strand_bit);
+	Read(mfem::igzstream &fin, char* out, bool gziped, char* N, int phred_score, int threshold, int max_head_trim, int max_tail_trim, int min_read_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, bool estimation, int paired, int strand_bit);
+	inline void constructor(mfem::igzstream &fin,char* N, int phred_score, int threshold, int max_head_trim, int max_tail_trim, int min_read_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, int strand_bit);
 	~Read();
 	Read& operator=(Read const& readbis);
 	void operator()();
-	void init(igzstream &fin);
+	void init(mfem::igzstream &fin);
 
 	inline void writeRead(ostream &stream);
 	inline void writeRead();
@@ -146,7 +146,7 @@ private:
 	static bool m_out_open;
 	static bool m_gziped;
 	static ofstream m_out;
-	static ogzstream m_out_gz;
+	static mfem::ogzstream m_out_gz;
 	static bool m_phred_score_set;
 	static char m_buffer[BUFFER_LENGTH];
 	static int m_phred_score;

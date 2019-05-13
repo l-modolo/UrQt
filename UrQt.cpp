@@ -72,7 +72,7 @@ int main(int argc, char **argv)
 	bool help = false;
 	bool ascii_logo = false;
 	int read_buffer = 1000;
-	
+
 	static struct option long_options[] =
 	{
 		{"in", required_argument, 0, 'a'},
@@ -206,16 +206,16 @@ int main(int argc, char **argv)
 			if(strcmp(in, out) == 0)
 					throw logic_error("in and out are the same file");
 			// test if input if readable for first file
-			igzstream fin;
+			mfem::igzstream fin;
 			fin.open(in);
 			if(!fin.good())
 				throw logic_error("while opening input file");
 			fin.close();
 			fin.clear();
 			// test if output is writable for first file
-			
+
 			ofstream fout;
-			ogzstream fout_gz;
+			mfem::ogzstream fout_gz;
 			if(gziped)
 			{
 				fout_gz.open(out);
@@ -232,10 +232,10 @@ int main(int argc, char **argv)
 				fout.close();
 				fout.clear();
 			}
-			
+
 			if(paired > 0) // if we work with paired files
 			{
-				igzstream fin;
+				mfem::igzstream fin;
 				fin.open(inpair);
 				if(!fin.good())
 					throw logic_error("while opening pair input file");
@@ -282,7 +282,7 @@ int main(int argc, char **argv)
 				strcpy(outpair_tmp, outpair);
 				strcat(outpair_tmp, ".tmp");
 				ofstream foutpair;
-				ogzstream foutpair_gz;
+				mfem::ogzstream foutpair_gz;
 				if(gziped)
 				{
 					foutpair_gz.open(outpair);
@@ -597,7 +597,7 @@ int main(int argc, char **argv)
 		Segmentation::phred_compute(threshold, false);
 	while(paired >=0 && paired <= 2)
 	{
-		igzstream fin;
+		mfem::igzstream fin;
 		char buffer[BUFFER_LENGTH];
 		if(paired <= 1)
 		{
@@ -612,7 +612,7 @@ int main(int argc, char **argv)
 			out_tmp = new char[strlen(outpair) + 1];
 			strcpy(in_tmp, inpair);
 			strcpy(out_tmp, outpair);
-			
+
 		}
 		fin.open(in_tmp);
 		fin.rdbuf()->pubsetbuf(buffer, BUFFER_LENGTH);
@@ -621,7 +621,7 @@ int main(int argc, char **argv)
 			cerr << "open of " << in_tmp << " failed" << endl;
 			exit(-1);
 		}
-		
+
 		cout << "processing:              " << in_tmp << endl;
 		// counting number of reads
 		number_of_lines = 0;
@@ -644,7 +644,7 @@ int main(int argc, char **argv)
 
 		number_of_lines = number_of_lines / 4;
 		cout <<  "reads number:            " << number_of_lines << endl;
-		
+
 		int t_number;
 		if(thread_number < 1)
 			thread_number = 1;
@@ -659,13 +659,13 @@ int main(int argc, char **argv)
 		{
 			t_number = thread_number;
 		}
-		
+
 		// estimation of the ATGC probability in the reads
 		if(estimation || sampling == number_of_lines)
 		{
 			//trimming of the reads
 			mThread<Read> readTrim(t_number, true, read_buffer);
-			
+
 			ez::ezRateProgressBar<int> p(number_of_lines);
 			p.units = "reads";
 			if(v){ p.start();}
@@ -677,12 +677,12 @@ int main(int argc, char **argv)
 			if(v){ p.update(number_of_lines);}
 			readTrim.stop();
 		}
-		else 
+		else
 		{
 			if(sampling > 0 && sampling != number_of_lines) //estimation of the ATGC probability in the reads from a sample
 			{
 				cout << "sampling..." << endl;
-				
+
 				set<int> reads_to_sample;
 				mThread<Read> readSample(t_number, true, read_buffer);
 				while(!Read::sampling_done())
@@ -699,11 +699,11 @@ int main(int argc, char **argv)
 						reads_to_sample.insert(distribution(generator));
 						i++;
 					}
-					
+
 					// we compute the ATCG for those reads
 					i = 0;
 					set<int>::iterator it = reads_to_sample.begin();
-					
+
 					while( i < number_of_lines_to_sample && it != reads_to_sample.end())
 					{
 						if(*it == i)
@@ -720,9 +720,9 @@ int main(int argc, char **argv)
 				cout << "proportion of A:         " << Read::A_content() << endl;
 				cout << "proportion of T:         " << Read::T_content() << endl;
 			}
-			//trimming of the reads			
+			//trimming of the reads
 			mThread<Read> readTrim(t_number, true, read_buffer);
-			
+
 			ez::ezRateProgressBar<int> p(number_of_lines);
 			p.units = "reads";
 			if(v){ p.start();}

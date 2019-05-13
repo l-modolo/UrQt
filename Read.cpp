@@ -39,7 +39,7 @@ int Read::m_paired = -1;
 bool Read::m_out_open = false;
 bool Read::m_gziped = false;
 ofstream Read::m_out;
-ogzstream Read::m_out_gz;
+mfem::ogzstream Read::m_out_gz;
 char Read::m_buffer[BUFFER_LENGTH];
 bool Read::m_phred_score_set = false;
 int Read::m_phred_score = 33.0;
@@ -257,7 +257,7 @@ void Read::writeFinal(queue<int> m_paired_pos, char* out, ez::ezRateProgressBar<
     strcpy(out_tmp, out);
     strcat(out_tmp, ".tmp");
     ofstream fout;
-    ogzstream fout_gz;
+    mfem::ogzstream fout_gz;
     char out_buffer[BUFFER_LENGTH];
     if(m_gziped)
     {
@@ -273,7 +273,7 @@ void Read::writeFinal(queue<int> m_paired_pos, char* out, ez::ezRateProgressBar<
         throw logic_error("ERROR: while opening output file");
       fout.rdbuf()->pubsetbuf(out_buffer, BUFFER_LENGTH);
     }
-    igzstream fin;
+    mfem::igzstream fin;
     char in_buffer[BUFFER_LENGTH];
     fin.open(out_tmp);
     if(!fin.good())
@@ -359,7 +359,7 @@ void Read::writeFinal(queue<int> m_paired_pos, char* out, ez::ezRateProgressBar<
 // Definition of the non static stuff
 
 // estimation of base probability for each read
-Read::Read(igzstream &fin, char* out, bool gziped, char* N, int phred_score, int threshold, int max_head_trim, int max_tail_trim, int min_read_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, bool estimate, int paired, int strand_bit)
+Read::Read(mfem::igzstream &fin, char* out, bool gziped, char* N, int phred_score, int threshold, int max_head_trim, int max_tail_trim, int min_read_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, bool estimate, int paired, int strand_bit)
 {
   try {
     unique_lock<mutex> lk(m_read);
@@ -375,7 +375,7 @@ Read::Read(igzstream &fin, char* out, bool gziped, char* N, int phred_score, int
 }
 
 // static base probability
-Read::Read(igzstream &fin, char* out, bool gziped, char* N, int phred_score, int threshold, int max_head_trim, int max_tail_trim, int min_read_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, int paired, int strand_bit)
+Read::Read(mfem::igzstream &fin, char* out, bool gziped, char* N, int phred_score, int threshold, int max_head_trim, int max_tail_trim, int min_read_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, int paired, int strand_bit)
 {
   try {
     unique_lock<mutex> lk(m_read);
@@ -391,7 +391,7 @@ Read::Read(igzstream &fin, char* out, bool gziped, char* N, int phred_score, int
 }
 
 // sampling of base probability
-Read::Read(igzstream &fin, char* N, int phred_score, int threshold, int max_head_trim, int max_tail_trim, int min_read_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, int strand_bit)
+Read::Read(mfem::igzstream &fin, char* N, int phred_score, int threshold, int max_head_trim, int max_tail_trim, int min_read_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, int strand_bit)
 {
   try {
     unique_lock<mutex> lk(m_read);
@@ -404,7 +404,7 @@ Read::Read(igzstream &fin, char* N, int phred_score, int threshold, int max_head
   }
 }
 
-void Read::constructor(igzstream &fin,char* N, int phred_score, int threshold, int max_head_trim, int max_tail_trim, int min_read_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, int strand_bit)
+void Read::constructor(mfem::igzstream &fin,char* N, int phred_score, int threshold, int max_head_trim, int max_tail_trim, int min_read_size, int read_number, bool remove_empty_reads, int min_QC_phred, double min_QC_length, int strand_bit)
 {
   try {
     m_trimmed = false;
@@ -635,7 +635,7 @@ bool Read::QC_check()
 	return m_QC_check;
 }
 
-void Read::init(igzstream &fin)
+void Read::init(mfem::igzstream &fin)
 {
   try {
     int line = 1;
