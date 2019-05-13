@@ -180,7 +180,7 @@ void mThreadDone<T>::run()
   }
   catch(exception const& e)
   {
-    cerr << "ERROR : " << e.what() << " in : void mThreadRunning<T>::thread_run()" << endl;
+    cerr << "ERROR : " << e.what() << " in : void mThreadDone<T>::thread_run()" << endl;
   }
 }
 
